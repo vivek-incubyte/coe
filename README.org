@@ -1,0 +1,91 @@
+#+title: CoE
+
+* Day 1 Summary
+** Working at Incubyte
+Working hours aren't fixed. We are free to choose our own working hours given that we hold ourselves accountable for our work.
+
+There are no strict leave policies. The only thing is accountability for our work and team. Our team should be informed about our leaves, tasks should be completed/taken care of, and responsibilities are handed off to the correct person.
+
+Employees must hold themselves at high standards. We are expected to be honest, accountable, respectful of others, disciplined in our work, be ready to learn and grow always.
+** Incubyte Core Values
+Incubyte strictly adheres to 6 guiding principles that are the foundation of everything:
+- Relentless Pursuit of Quality with Pragmatism
+- Extreme Ownership
+- Proactive Collaboration
+- Active Pursuit of Mastery
+- Give, Invite, and Act on Feedback
+- Create Ecstatic Customers
+** 3 rules of TDD
+Robert C. Martin explains that there are 3 core rules of TDD and they are as follows:
+- The only reason to write production code is to make tests pass
+- Only write as small of a unit test that fails to ensure missing functionality
+- Only write as much code in production as is required to make the failing tests pass
+
+These unit tests ensure high degree of confidence in the shipped production code. Naturally it gives the confidence to refactor code because we can ensure that functionality is as expected.
+
+Tests also act as the source of truth/documentation for the expect outcome of a product.
+
+Writing tests AFTER the functionality is completed doesn't add as much value because we already know the functionality is working. So, writing tests BEFORE we know a code is functional makes more sense.
+
+Having lots of tests saves a lot of debugging time. This is one of the core insights. If the code has enough tests, the amount of time required for debugging is significantly reduced because we know exactly where an issue might arise thanks to the tests.
+
+The way I think about it is that it is the extreme form of left-shift testing. Usually tests are shifted towards the left or to earlier phases to avoid large testing cycles. TDD shifts it to the extreme by shifting the testing to even before writing any production code. This way, bugs are reduced overall in the system.
+** SOLID principles
+These are principles for writing code that helps create better software in terms of maintainability. It is easy to build functional code, but it might be messy. It is easy to reason about when the context is fresh and when the functionality is recently built.
+
+However, as time passes on, as developers are changed, bad code increases time to ship, reduces developer productivity, etc. Also, a lot of time is spent on reading code rather than writing code after a certain time. Once the software enters maintaenance mode, more time is spent finding and reading the code rather than adding new code. This is why using SOLID principles and good coding practices helps developers in the future.
+
+These are the 5 solid principles:
+- Single Responsibility - Every class/module should only have a single reason to change
+- Open/Closed - A unit should be opened to extension, but closed to modification
+- Liskov substituition -  A subclass should be usable anywhere its parent class is expected
+- Interface segregation - A client should not be forced to depend on methods it does not use
+- Dependency Inversion - Don't depend on concrete implementations, instead rely on abstractions
+** Feedback training - REACH method
+It is important to have clear communication between all members of the community. To ensure that everyone is held to high standards and are improving regularly, we follow the REACH method. Feedbacks are highly valuable for one's success at Incubyte and anywhere in life. Here is what REACH stands for:
+
+- Real-time: The feedback should be near real-time, not later
+- Express Intent: Express to the listener what feedback you intend to give
+- Actually happened: Convey real events that happened which caused you to think they need feedback
+- Consequences: Explain the consequences that they might face if they continue their current behavior
+- Help Offered: Offer ways to improve based on your feedback instead of just faults
+** Pair Programming
+Pair Programming is a way of working collaboratively with other developers to improve the quality of shipped work. In this form of working, two people work together with a screen shared setting where they not only write code, but explain thought processes, discuss implementation details, plan their work, etc.
+
+There are various styles of collaborating and it depends on both the individuals:
+- Driver and Navigator: One writes code mostly, and other nudges and guides on a high-level
+- Ping-Pong: One writes test code, while other writes small amount of production code
+- Strong-Style Pairing: Mostly knowledge transfer style where one person simply follows the other
+
+During pair programming, it is important to keep both parties invovled and ensure they are not exhausted. The reason is that it is hard to have productive work if you work for long hours and if someone is constantly there. Hence, techniques such as day planning, Pomodoro technique, frequent breaks, etc. are very important. Even rotating pairs help maintain flexibility and comfort while pair programming.
+
+It is important to note that it is best to avoid activities that aren't good for collaboration. Things such as not focusing on the shared screen, micro-managing, speaking too much, interrupting the other, working long hours, etc.
+** Incubyte's AI plugins repository
+Incubyte has created multiple plugins that make it easier to work with Claude Code. Some of the most important ones are:
+- Bee
+- Learn
+
+There are various commands in bee such as:
+- bee:sdd
+- bee:coach
+- bee:review
+- bee:ping-pong
+
+etc. These command help write code, follow TDD practices, document code, write code from specs, review code, etc. Overall, this helps streamline the entire development of the product.
+
+Learn is another tool that helps learn a specific technology like a teacher with examples and exercises. It crafts a journey for you which you can complete over time. Some important commands are:
+- learn:start
+- learn:next
+- learn:review
+- learn:explain
+- learn:analyze
+** Converting JS to TS
+TS is just JS + static types and types exist only during development that are stripped when compiling to JavaScript.
+
+Converting a JS file to a TS file is simple. Start by renaming the file from .js to .ts. Ensure that you have a tsconfig file that has the rules for Typescript.
+
+After converting to .ts, wherever the compiler complains of not having types, simply add those types to function and variables. There will be places where automatic inference takes places, those can be skipped entirely. If some types have multiple attributes, or are reused in multiple places, better to create separte types instead of annotating in place.
+
+Instead of starting with any, start with the least no. of attributes required and define them. Avoid any until and unless the data type is not known genuinely.
+
+There will be places where null and undefined aren't handled. It refers to those types that might have empty fields. For such places, use ? to indicate a possibly null field which avoid runtime crashes later on.
