@@ -1,5 +1,16 @@
 #+title: CoE
 
+* Table of Contents :toc:
+- [[#day-1-summary][Day 1 Summary]]
+  - [[#working-at-incubyte][Working at Incubyte]]
+  - [[#incubyte-core-values][Incubyte Core Values]]
+  - [[#3-rules-of-tdd][3 rules of TDD]]
+  - [[#solid-principles][SOLID principles]]
+  - [[#feedback-training---reach-method][Feedback training - REACH method]]
+  - [[#pair-programming][Pair Programming]]
+  - [[#incubytes-ai-plugins-repository][Incubyte's AI plugins repository]]
+  - [[#converting-js-to-ts][Converting JS to TS]]
+
 * Day 1 Summary
 ** Working at Incubyte
 Working hours aren't fixed. We are free to choose our own working hours given that we hold ourselves accountable for our work.
