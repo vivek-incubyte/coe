@@ -20,17 +20,17 @@ There are no strict leave policies. The only thing is accountability for our wor
 Employees must hold themselves at high standards. We are expected to be honest, accountable, respectful of others, disciplined in our work, be ready to learn and grow always.
 ** Incubyte Core Values
 Incubyte strictly adheres to 6 guiding principles that are the foundation of everything:
-- Relentless Pursuit of Quality with Pragmatism
-- Extreme Ownership
-- Proactive Collaboration
-- Active Pursuit of Mastery
-- Give, Invite, and Act on Feedback
-- Create Ecstatic Customers
+1. Relentless Pursuit of Quality with Pragmatism
+2. Extreme Ownership
+3. Proactive Collaboration
+4. Active Pursuit of Mastery
+5. Give, Invite, and Act on Feedback
+6. Create Ecstatic Customers
 ** 3 rules of TDD
 Robert C. Martin explains that there are 3 core rules of TDD and they are as follows:
-- The only reason to write production code is to make tests pass
-- Only write as small of a unit test that fails to ensure missing functionality
-- Only write as much code in production as is required to make the failing tests pass
+1. The only reason to write production code is to make tests pass
+2. Only write as small of a unit test that fails to ensure missing functionality
+3. Only write as much code in production as is required to make the failing tests pass
 
 These unit tests ensure high degree of confidence in the shipped production code. Naturally it gives the confidence to refactor code because we can ensure that functionality is as expected.
 
@@ -47,49 +47,49 @@ These are principles for writing code that helps create better software in terms
 However, as time passes on, as developers are changed, bad code increases time to ship, reduces developer productivity, etc. Also, a lot of time is spent on reading code rather than writing code after a certain time. Once the software enters maintaenance mode, more time is spent finding and reading the code rather than adding new code. This is why using SOLID principles and good coding practices helps developers in the future.
 
 These are the 5 solid principles:
-- Single Responsibility - Every class/module should only have a single reason to change
-- Open/Closed - A unit should be opened to extension, but closed to modification
-- Liskov substituition -  A subclass should be usable anywhere its parent class is expected
-- Interface segregation - A client should not be forced to depend on methods it does not use
-- Dependency Inversion - Don't depend on concrete implementations, instead rely on abstractions
+1. Single Responsibility - Every class/module should only have a single reason to change
+2. Open/Closed - A unit should be opened to extension, but closed to modification
+3. Liskov substituition -  A subclass should be usable anywhere its parent class is expected
+4. Interface segregation - A client should not be forced to depend on methods it does not use
+5. Dependency Inversion - Don't depend on concrete implementations, instead rely on abstractions
 ** Feedback training - REACH method
 It is important to have clear communication between all members of the community. To ensure that everyone is held to high standards and are improving regularly, we follow the REACH method. Feedbacks are highly valuable for one's success at Incubyte and anywhere in life. Here is what REACH stands for:
 
-- Real-time: The feedback should be near real-time, not later
-- Express Intent: Express to the listener what feedback you intend to give
-- Actually happened: Convey real events that happened which caused you to think they need feedback
-- Consequences: Explain the consequences that they might face if they continue their current behavior
-- Help Offered: Offer ways to improve based on your feedback instead of just faults
+1. Real-time: The feedback should be near real-time, not later
+2. Express Intent: Express to the listener what feedback you intend to give
+3. Actually happened: Convey real events that happened which caused you to think they need feedback
+4. Consequences: Explain the consequences that they might face if they continue their current behavior
+5. Help Offered: Offer ways to improve based on your feedback instead of just faults
 ** Pair Programming
 Pair Programming is a way of working collaboratively with other developers to improve the quality of shipped work. In this form of working, two people work together with a screen shared setting where they not only write code, but explain thought processes, discuss implementation details, plan their work, etc.
 
 There are various styles of collaborating and it depends on both the individuals:
-- Driver and Navigator: One writes code mostly, and other nudges and guides on a high-level
-- Ping-Pong: One writes test code, while other writes small amount of production code
-- Strong-Style Pairing: Mostly knowledge transfer style where one person simply follows the other
+1. Driver and Navigator: One writes code mostly, and other nudges and guides on a high-level
+2. Ping-Pong: One writes test code, while other writes small amount of production code
+3. Strong-Style Pairing: Mostly knowledge transfer style where one person simply follows the other
 
 During pair programming, it is important to keep both parties invovled and ensure they are not exhausted. The reason is that it is hard to have productive work if you work for long hours and if someone is constantly there. Hence, techniques such as day planning, Pomodoro technique, frequent breaks, etc. are very important. Even rotating pairs help maintain flexibility and comfort while pair programming.
 
 It is important to note that it is best to avoid activities that aren't good for collaboration. Things such as not focusing on the shared screen, micro-managing, speaking too much, interrupting the other, working long hours, etc.
 ** Incubyte's AI plugins repository
 Incubyte has created multiple plugins that make it easier to work with Claude Code. Some of the most important ones are:
-- Bee
-- Learn
+1. Bee
+2. Learn
 
 There are various commands in bee such as:
-- bee:sdd
-- bee:coach
-- bee:review
-- bee:ping-pong
+1. bee:sdd
+2. bee:coach
+3. bee:review
+4. bee:ping-pong
 
 etc. These command help write code, follow TDD practices, document code, write code from specs, review code, etc. Overall, this helps streamline the entire development of the product.
 
 Learn is another tool that helps learn a specific technology like a teacher with examples and exercises. It crafts a journey for you which you can complete over time. Some important commands are:
-- learn:start
-- learn:next
-- learn:review
-- learn:explain
-- learn:analyze
+1. learn:start
+2. learn:next
+3. learn:review
+4. learn:explain
+5. learn:analyze
 ** Converting JS to TS
 TS is just JS + static types and types exist only during development that are stripped when compiling to JavaScript.
 
