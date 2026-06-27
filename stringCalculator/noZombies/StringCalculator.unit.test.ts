@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v1", () => {
+describe("StringCalculator v2", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -28,16 +28,9 @@ describe("StringCalculator v1", () => {
     expect(output).toBe(0);
   });
 
-  it("throws error on passing 3 values (int only)", () => {
-    expect(() => calculator.Add("2,3,4")).toThrow(
-      "Maximum of 2 numbers are allowed",
-    );
-  });
-
-  it("throws error on passing more than 2 values (int only)", () => {
-    expect(() => calculator.Add("2,3,4,5,6")).toThrow(
-      "Maximum of 2 numbers are allowed",
-    );
+  it("works with many values", () => {
+    const output = calculator.Add("2,3,4,5,6,7,8,9,10");
+    expect(output).toBe(54);
   });
 
   it("throws error for non-numeric strings", () => {
@@ -46,12 +39,6 @@ describe("StringCalculator v1", () => {
 
   it("throws error for mix of numeric and non-numeric strings", () => {
     expect(() => calculator.Add("1,random")).toThrow("Invalid number");
-  });
-
-  it("throws error on passing more than 2 values (any value)", () => {
-    expect(() => calculator.Add("2,3,value")).toThrow(
-      "Maximum of 2 numbers are allowed",
-    );
   });
 
   //  With the help of AI
