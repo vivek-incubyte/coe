@@ -5,7 +5,7 @@ export class StringCalculator {
     }
 
     let total = 0;
-    const integers = numbers.split(",");
+    const integers = numbers.replace(/\n/g, ",").split(",");
     for (const number of integers) {
       const integer = Math.trunc(Number(number));
       if (Number.isNaN(integer)) {

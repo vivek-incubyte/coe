@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v2", () => {
+describe("StringCalculator v3", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -69,5 +69,27 @@ describe("StringCalculator v2", () => {
   it("truncates decimal numbers", () => {
     const output = calculator.Add("2.45");
     expect(output).toBe(2);
+  });
+
+  describe("newline", () => {
+    it("accepts newline as separator", () => {
+      const output = calculator.Add("6\n9");
+      expect(output).toBe(15);
+    });
+
+    it("accepts newline and , both as separators", () => {
+      const output = calculator.Add("6\n9,5");
+      expect(output).toBe(20);
+    });
+
+    it("accepts , and newline both as separators", () => {
+      const output = calculator.Add("6,9\n5");
+      expect(output).toBe(20);
+    });
+
+    it("works with many values (, and newline)", () => {
+      const output = calculator.Add("2,3,4\n5,6,7\n8,9\n10");
+      expect(output).toBe(54);
+    });
   });
 });
