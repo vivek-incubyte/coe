@@ -17,20 +17,23 @@ export class StringCalculator {
       return 0;
     }
 
-    let total = 0;
     const parts = delimiter !== null
       ? numberSection.split(delimiter)
       : numberSection.replace(/\n/g, ",").split(",");
 
-    for (const number of parts) {
-      const integer = Math.trunc(Number(number.trim()));
+    const integers = parts.map((n) => {
+      const integer = Math.trunc(Number(n.trim()));
       if (Number.isNaN(integer)) {
         throw new Error("Invalid number");
       }
+      return integer;
+    });
 
-      total += integer;
+    const negatives = integers.filter((n) => n < 0);
+    if (negatives.length > 0) {
+      throw new Error(`negatives not allowed: ${negatives.join(", ")}`);
     }
 
-    return total;
+    return integers.reduce((sum, n) => sum + n, 0);
   }
 }

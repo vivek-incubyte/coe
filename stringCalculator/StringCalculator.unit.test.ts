@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v4", () => {
+describe("StringCalculator v5", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -23,9 +23,8 @@ describe("StringCalculator v4", () => {
     expect(output).toBe(3);
   });
 
-  it("works on negative numbers also", () => {
-    const output = calculator.Add("1,-1");
-    expect(output).toBe(0);
+  it("throws for a negative number", () => {
+    expect(() => calculator.Add("1,-1")).toThrow("negatives not allowed");
   });
 
   it("works with many values", () => {
@@ -61,14 +60,51 @@ describe("StringCalculator v4", () => {
     expect(output).toBe(6);
   });
 
-  it("gets negative for all negative numbers", () => {
-    const output = calculator.Add("-2, -5");
-    expect(output).toBe(-7);
+  it("throws for multiple negative numbers", () => {
+    expect(() => calculator.Add("-2, -5")).toThrow("negatives not allowed");
   });
 
   it("truncates decimal numbers", () => {
     const output = calculator.Add("2.45");
     expect(output).toBe(2);
+  });
+
+  describe("negatives", () => {
+    // Z – zero negatives: normal sum still works
+    it("does not throw when no negatives are present", () => {
+      expect(() => calculator.Add("1,2,3")).not.toThrow();
+    });
+
+    // O – single negative alone
+    it("throws with the negative when one negative is passed", () => {
+      expect(() => calculator.Add("-1")).toThrow("negatives not allowed: -1");
+    });
+
+    // O – single negative mixed with positives
+    it("throws with the negative when mixed with positives", () => {
+      expect(() => calculator.Add("1,-2,3")).toThrow("negatives not allowed: -2");
+    });
+
+    // M – multiple negatives: all listed in message
+    it("throws listing all negatives when multiple are passed", () => {
+      expect(() => calculator.Add("-1,2,-3,-4")).toThrow(
+        "negatives not allowed: -1, -3, -4"
+      );
+    });
+
+    // B – negative with custom delimiter
+    it("throws for a negative number when custom delimiter is used", () => {
+      expect(() => calculator.Add("//;\n1;-2;3")).toThrow(
+        "negatives not allowed: -2"
+      );
+    });
+
+    // E – all numbers are negative: all appear in message
+    it("throws listing every number when all are negative", () => {
+      expect(() => calculator.Add("-5,-10")).toThrow(
+        "negatives not allowed: -5, -10"
+      );
+    });
   });
 
   describe("custom delimiter", () => {
