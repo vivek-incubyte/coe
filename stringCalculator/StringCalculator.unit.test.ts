@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v3", () => {
+describe("StringCalculator v4", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -69,6 +69,49 @@ describe("StringCalculator v3", () => {
   it("truncates decimal numbers", () => {
     const output = calculator.Add("2.45");
     expect(output).toBe(2);
+  });
+
+  describe("custom delimiter", () => {
+    // Z – zero numbers
+    it("returns 0 for empty numbers section with delimiter header", () => {
+      const output = calculator.Add("//;\n");
+      expect(output).toBe(0);
+    });
+
+    // O – one number
+    it("returns the number itself for single number with custom delimiter", () => {
+      const output = calculator.Add("//;\n5");
+      expect(output).toBe(5);
+    });
+
+    // O – two numbers (spec example)
+    it("sums two numbers separated by custom delimiter", () => {
+      const output = calculator.Add("//;\n1;2");
+      expect(output).toBe(3);
+    });
+
+    // M – many numbers
+    it("sums many numbers separated by custom delimiter", () => {
+      const output = calculator.Add("//;\n1;2;3;4");
+      expect(output).toBe(10);
+    });
+
+    // B – special regex character as delimiter
+    it("handles special-character delimiter", () => {
+      const output = calculator.Add("//.\n1.2");
+      expect(output).toBe(3);
+    });
+
+    // B – multi-character delimiter
+    it("handles multi-character delimiter", () => {
+      const output = calculator.Add("//***\n1***2***3");
+      expect(output).toBe(6);
+    });
+
+    // E – wrong delimiter used in number section throws
+    it("throws when default delimiter is used instead of the custom one", () => {
+      expect(() => calculator.Add("//;\n1,2")).toThrow("Invalid number");
+    });
   });
 
   describe("newline", () => {
