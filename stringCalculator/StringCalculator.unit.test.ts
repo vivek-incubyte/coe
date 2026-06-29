@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v5", () => {
+describe("StringCalculator v6", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -82,27 +82,29 @@ describe("StringCalculator v5", () => {
 
     // O – single negative mixed with positives
     it("throws with the negative when mixed with positives", () => {
-      expect(() => calculator.Add("1,-2,3")).toThrow("negatives not allowed: -2");
+      expect(() => calculator.Add("1,-2,3")).toThrow(
+        "negatives not allowed: -2",
+      );
     });
 
     // M – multiple negatives: all listed in message
     it("throws listing all negatives when multiple are passed", () => {
       expect(() => calculator.Add("-1,2,-3,-4")).toThrow(
-        "negatives not allowed: -1, -3, -4"
+        "negatives not allowed: -1, -3, -4",
       );
     });
 
     // B – negative with custom delimiter
     it("throws for a negative number when custom delimiter is used", () => {
       expect(() => calculator.Add("//;\n1;-2;3")).toThrow(
-        "negatives not allowed: -2"
+        "negatives not allowed: -2",
       );
     });
 
     // E – all numbers are negative: all appear in message
     it("throws listing every number when all are negative", () => {
       expect(() => calculator.Add("-5,-10")).toThrow(
-        "negatives not allowed: -5, -10"
+        "negatives not allowed: -5, -10",
       );
     });
   });
@@ -169,6 +171,67 @@ describe("StringCalculator v5", () => {
     it("works with many values (, and newline)", () => {
       const output = calculator.Add("2,3,4\n5,6,7\n8,9\n10");
       expect(output).toBe(54);
+    });
+  });
+
+  describe("GetCalledCount", () => {
+    // Z – zero calls: freshly created instance returns 0
+    it("returns 0 when Add has never been called", () => {
+      const calc = new StringCalculator();
+      expect(calc.GetCalledCount()).toBe(0);
+    });
+
+    // O – one call
+    it("returns 1 after Add is called once", () => {
+      const calc = new StringCalculator();
+      calc.Add("1");
+      expect(calc.GetCalledCount()).toBe(1);
+    });
+
+    // O – two calls
+    it("returns 2 after Add is called twice", () => {
+      const calc = new StringCalculator();
+      calc.Add("1");
+      calc.Add("2,3");
+      expect(calc.GetCalledCount()).toBe(2);
+    });
+
+    // M – many calls
+    it("counts every call regardless of input", () => {
+      const calc = new StringCalculator();
+      calc.Add("1");
+      calc.Add("2");
+      calc.Add("3");
+      calc.Add("4");
+      calc.Add("5");
+      expect(calc.GetCalledCount()).toBe(5);
+    });
+
+    // B – call with empty string still counts
+    it("counts a call with an empty string", () => {
+      const calc = new StringCalculator();
+      calc.Add("");
+      expect(calc.GetCalledCount()).toBe(1);
+    });
+
+    // E – Add throwing still counts as an invocation
+    it("counts a call even when Add throws", () => {
+      const calc = new StringCalculator();
+      try {
+        calc.Add("-1");
+      } catch {}
+      expect(calc.GetCalledCount()).toBe(1);
+    });
+
+    // S – each instance tracks its own count independently
+    it("each instance has its own independent count", () => {
+      const calc1 = new StringCalculator();
+      const calc2 = new StringCalculator();
+      calc1.Add("1");
+      calc1.Add("2");
+      calc2.Add("1");
+      expect(calc1.GetCalledCount()).toBe(2);
+      expect(calc2.GetCalledCount()).toBe(1);
     });
   });
 });
