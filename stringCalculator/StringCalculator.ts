@@ -9,7 +9,6 @@ export class StringCalculator {
     this.callCount++;
 
     const { numberSection, delimiter } = this.getNumbersAndDelimiters(numbers);
-    console.log("Num", numberSection);
 
     if (numberSection === "" || numberSection === "\n") {
       return 0;
@@ -30,7 +29,7 @@ export class StringCalculator {
       throw new Error(`negatives not allowed: ${negatives.join(", ")}`);
     }
 
-    return integers.reduce((sum, n) => sum + n, 0);
+    return integers.filter((n) => n <= 1000).reduce((sum, n) => sum + n, 0);
   }
 
   private getNumbersAndDelimiters(numbers: string) {

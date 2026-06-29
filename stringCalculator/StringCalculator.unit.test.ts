@@ -69,6 +69,50 @@ describe("StringCalculator v6", () => {
     expect(output).toBe(2);
   });
 
+  describe("ignoring large numbers", () => {
+    // Z – zero large numbers: existing sum is unaffected
+    it("sums normally when no number exceeds 1000", () => {
+      const output = calculator.Add("1,2,3");
+      expect(output).toBe(6);
+    });
+
+    // O – single number over 1000 is ignored
+    it("returns 0 for a single number greater than 1000", () => {
+      const output = calculator.Add("1001");
+      expect(output).toBe(0);
+    });
+
+    // O – one large mixed with one small
+    it("ignores the large number and returns the small one", () => {
+      const output = calculator.Add("2,1001");
+      expect(output).toBe(2);
+    });
+
+    // M – many large numbers mixed with small ones
+    it("ignores all numbers greater than 1000 in a long list", () => {
+      const output = calculator.Add("1,1001,2,1002,3");
+      expect(output).toBe(6);
+    });
+
+    // B – exactly 1000 is NOT ignored (boundary: > 1000, not >= 1000)
+    it("includes 1000 in the sum since it is not greater than 1000", () => {
+      const output = calculator.Add("1000,2");
+      expect(output).toBe(1002);
+    });
+
+    // B – large number with custom delimiter
+    it("ignores large numbers when a custom delimiter is used", () => {
+      const output = calculator.Add("//;\n1;1001;2");
+      expect(output).toBe(3);
+    });
+
+    // E – all numbers over 1000: result is 0
+    it("returns 0 when every number is greater than 1000", () => {
+      const output = calculator.Add("1001,1002");
+      expect(output).toBe(0);
+    });
+  });
+
   describe("negatives", () => {
     // Z – zero negatives: normal sum still works
     it("does not throw when no negatives are present", () => {
