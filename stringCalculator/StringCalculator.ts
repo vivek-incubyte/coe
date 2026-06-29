@@ -1,25 +1,21 @@
 export class StringCalculator {
+  private callCount = 0;
+
+  GetCalledCount(): number {
+    return this.callCount;
+  }
+
   Add(numbers: string): number {
-    if (numbers === "") {
+    this.callCount++;
+
+    const { numberSection, delimiter } = this.getNumbersAndDelimiters(numbers);
+    console.log("Num", numberSection);
+
+    if (numberSection === "" || numberSection === "\n") {
       return 0;
     }
 
-    let numberSection = numbers;
-    let delimiter: string | null = null;
-
-    if (numbers.startsWith("//")) {
-      const newlineIndex = numbers.indexOf("\n");
-      delimiter = numbers.substring(2, newlineIndex);
-      numberSection = numbers.substring(newlineIndex + 1);
-    }
-
-    if (numberSection === "") {
-      return 0;
-    }
-
-    const parts = delimiter !== null
-      ? numberSection.split(delimiter)
-      : numberSection.replace(/\n/g, ",").split(",");
+    const parts = numberSection.replace(/\n/g, ",").split(delimiter);
 
     const integers = parts.map((n) => {
       const integer = Math.trunc(Number(n.trim()));
@@ -35,5 +31,21 @@ export class StringCalculator {
     }
 
     return integers.reduce((sum, n) => sum + n, 0);
+  }
+
+  private getNumbersAndDelimiters(numbers: string) {
+    let numberSection = numbers;
+    let delimiter = ",";
+
+    if (numbers.startsWith("//")) {
+      const newlineIndex = numbers.indexOf("\n");
+      delimiter = numbers.substring(2, newlineIndex);
+      numberSection = numbers.substring(newlineIndex + 1);
+    }
+
+    return {
+      numberSection,
+      delimiter,
+    };
   }
 }
