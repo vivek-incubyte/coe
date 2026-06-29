@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v6", () => {
+describe("StringCalculator v7", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -150,6 +150,49 @@ describe("StringCalculator v6", () => {
       expect(() => calculator.Add("-5,-10")).toThrow(
         "negatives not allowed: -5, -10",
       );
+    });
+  });
+
+  describe("bracket delimiter format", () => {
+    // Z – empty number section with bracket header
+    it("returns 0 for empty numbers section with bracket delimiter", () => {
+      const output = calculator.Add("//[;]\n");
+      expect(output).toBe(0);
+    });
+
+    // O – single number
+    it("returns the number itself for a single number with bracket delimiter", () => {
+      const output = calculator.Add("//[;]\n5");
+      expect(output).toBe(5);
+    });
+
+    // O – two numbers (bracket single-char delimiter)
+    it("sums two numbers with a bracket-wrapped single-char delimiter", () => {
+      const output = calculator.Add("//[;]\n1;2");
+      expect(output).toBe(3);
+    });
+
+    // M – multi-character delimiter (the spec example)
+    it("sums numbers with a multi-character bracket delimiter", () => {
+      const output = calculator.Add("//[***]\n1***2***3");
+      expect(output).toBe(6);
+    });
+
+    // B – special regex character inside brackets
+    it("handles a special-character delimiter inside brackets", () => {
+      const output = calculator.Add("//[.]\n1.2");
+      expect(output).toBe(3);
+    });
+
+    // B – old non-bracket format still works (no regression)
+    it("old non-bracket custom delimiter format still works", () => {
+      const output = calculator.Add("//;\n1;2");
+      expect(output).toBe(3);
+    });
+
+    // E – wrong delimiter used in number section throws
+    it("throws when default delimiter used instead of bracket-wrapped one", () => {
+      expect(() => calculator.Add("//[;]\n1,2")).toThrow("Invalid number");
     });
   });
 

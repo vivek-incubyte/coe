@@ -38,7 +38,10 @@ export class StringCalculator {
 
     if (numbers.startsWith("//")) {
       const newlineIndex = numbers.indexOf("\n");
-      delimiter = numbers.substring(2, newlineIndex);
+      const delimiterSpec = numbers.substring(2, newlineIndex);
+      delimiter = delimiterSpec.startsWith("[") && delimiterSpec.endsWith("]")
+        ? delimiterSpec.slice(1, -1)
+        : delimiterSpec;
       numberSection = numbers.substring(newlineIndex + 1);
     }
 
