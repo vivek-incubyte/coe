@@ -1,6 +1,6 @@
 import { StringCalculator } from "./StringCalculator";
 
-describe("StringCalculator v7", () => {
+describe("StringCalculator v8", () => {
   const calculator = new StringCalculator();
 
   it("returns 0 for empty string", () => {
@@ -149,6 +149,65 @@ describe("StringCalculator v7", () => {
     it("throws listing every number when all are negative", () => {
       expect(() => calculator.Add("-5,-10")).toThrow(
         "negatives not allowed: -5, -10",
+      );
+    });
+  });
+
+  describe("multiple delimiters", () => {
+    // Z – single-bracket format
+    it("single bracket delimiter works", () => {
+      const output = calculator.Add("//[;]\n1;2;3");
+      expect(output).toBe(6);
+    });
+
+    // O – two delimiters, both used in the numbers (spec example)
+    it("sums numbers split by two different single-char delimiters", () => {
+      const output = calculator.Add("//[*][%]\n1*2%3");
+      expect(output).toBe(6);
+    });
+
+    // O – two delimiters, only the first one used
+    it("works when only one of the two declared delimiters appears in the numbers", () => {
+      const output = calculator.Add("//[*][%]\n1*2*3");
+      expect(output).toBe(6);
+    });
+
+    // M – three delimiters, all used
+    it("sums numbers split by three different delimiters", () => {
+      const output = calculator.Add("//[*][%][!]\n1*2%3!4");
+      expect(output).toBe(10);
+    });
+
+    // B – two multi-character delimiters
+    it("handles two multi-character delimiters", () => {
+      const output = calculator.Add("//[**][%%]\n1**2%%3");
+      expect(output).toBe(6);
+    });
+
+    // B – mix of single-char and multi-char delimiters
+    it("handles a mix of single-char and multi-char delimiters", () => {
+      const output = calculator.Add("//[*][%%]\n1*2%%3");
+      expect(output).toBe(6);
+    });
+
+    // E – undeclared delimiter in number section throws
+    it("throws when an undeclared delimiter appears in the numbers", () => {
+      expect(() => calculator.Add("//[*][%]\n1;2")).toThrow("Invalid number");
+    });
+
+    it("throws when single bracket without delimiter", () => {
+      expect(() => calculator.Add("//[]\n1;2;3")).toThrow("Invalid delimiter");
+    });
+
+    it("throws when multiple bracket without delimiter", () => {
+      expect(() => calculator.Add("//[][]\n1;2;3")).toThrow(
+        "Invalid delimiter",
+      );
+    });
+
+    it("throws when multiple bracket with and without delimiter", () => {
+      expect(() => calculator.Add("//[;][]\n1;2;3")).toThrow(
+        "Invalid delimiter",
       );
     });
   });
