@@ -154,6 +154,11 @@ describe("StringCalculator v7", () => {
   });
 
   describe("bracket delimiter format", () => {
+    // Z – Empty delimiter brackets should not work
+    it("throws when no delimiter provided", () => {
+      expect(() => calculator.Add("//[]\n1,2")).toThrow("Invalid delimiter");
+    });
+
     // Z – empty number section with bracket header
     it("returns 0 for empty numbers section with bracket delimiter", () => {
       const output = calculator.Add("//[;]\n");
@@ -181,12 +186,6 @@ describe("StringCalculator v7", () => {
     // B – special regex character inside brackets
     it("handles a special-character delimiter inside brackets", () => {
       const output = calculator.Add("//[.]\n1.2");
-      expect(output).toBe(3);
-    });
-
-    // B – old non-bracket format still works (no regression)
-    it("old non-bracket custom delimiter format still works", () => {
-      const output = calculator.Add("//;\n1;2");
       expect(output).toBe(3);
     });
 

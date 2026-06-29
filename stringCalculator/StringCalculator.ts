@@ -39,9 +39,13 @@ export class StringCalculator {
     if (numbers.startsWith("//")) {
       const newlineIndex = numbers.indexOf("\n");
       const delimiterSpec = numbers.substring(2, newlineIndex);
-      delimiter = delimiterSpec.startsWith("[") && delimiterSpec.endsWith("]")
-        ? delimiterSpec.slice(1, -1)
-        : delimiterSpec;
+      delimiter =
+        delimiterSpec.startsWith("[") && delimiterSpec.endsWith("]")
+          ? delimiterSpec.slice(1, -1)
+          : delimiterSpec;
+      if (delimiter === "") {
+        throw new Error("Invalid delimiter");
+      }
       numberSection = numbers.substring(newlineIndex + 1);
     }
 
