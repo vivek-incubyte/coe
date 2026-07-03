@@ -1,10 +1,11 @@
+import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import * as schema from '../infra/database/schema';
+import {
+  DATABASE_CONNECTION,
+  type Database,
+} from '../infra/database/database.module';
 import { tasks } from '../infra/database/schema';
 import type { Task, TaskStatus } from './task.schema';
-
-type DB = ReturnType<typeof drizzle<typeof schema>>;
 
 export type CreateTaskInput = {
   title: string;
@@ -14,8 +15,9 @@ export type CreateTaskInput = {
 
 export type UpdateTaskInput = Partial<CreateTaskInput>;
 
+@Injectable()
 export class TasksRepository {
-  constructor(private readonly db: DB) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   async create(input: CreateTaskInput): Promise<Task> {
     const [row] = await this.db
