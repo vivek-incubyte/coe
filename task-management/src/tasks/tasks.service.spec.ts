@@ -1,15 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ZodError } from 'zod';
 import { TasksService } from './tasks.service';
-import { Task, TaskSchema } from './task.schema';
+import { Task, TaskSchema, TaskStatus } from './task.schema';
 import { randomUUID } from 'node:crypto';
-import { TASK_STATUS } from './task.enum';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
   title: 'Test task',
   description: 'A description',
-  status: TASK_STATUS.OPEN,
+  status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
   ...overrides,
 });
@@ -82,9 +81,9 @@ describe('TasksService', () => {
 
   it('returns tasks with each valid status value unchanged', () => {
     const statuses = [
-      TASK_STATUS.OPEN,
-      TASK_STATUS.IN_PROGRESS,
-      TASK_STATUS.DONE,
+      TaskStatus.enum.OPEN,
+      TaskStatus.enum.IN_PROGRESS,
+      TaskStatus.enum.DONE,
     ] as const;
     statuses.forEach((status) => service.addTask(makeTask({ status })));
 

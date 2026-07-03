@@ -2,15 +2,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
-import { Task, TaskResponseDto, TaskResponseSchema } from './task.schema';
+import { Task, TaskResponseSchema, TaskStatus } from './task.schema';
 import { randomUUID } from 'node:crypto';
-import { TASK_STATUS } from './task.enum';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
   title: 'Test task',
   description: 'Sample Task',
-  status: TASK_STATUS.OPEN,
+  status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
   ...overrides,
 });
@@ -49,7 +48,7 @@ describe('TasksController', () => {
     });
     mockTasksService.findAll.mockReturnValue([task]);
 
-    const [dto] = controller.findAll() as TaskResponseDto[];
+    const [dto] = controller.findAll();
 
     expect(dto.createdAt).toBe(dateString);
     expect(dto.id).toBe(task.id);
@@ -71,7 +70,7 @@ describe('TasksController', () => {
     ];
     mockTasksService.findAll.mockReturnValue(tasks);
 
-    const result = controller.findAll() as TaskResponseDto[];
+    const result = controller.findAll();
 
     expect(result[0].createdAt).toBe(dateString1);
     expect(result[1].createdAt).toBe(dateString2);
@@ -93,7 +92,7 @@ describe('TasksController', () => {
     const task = makeTask({ createdAt: new Date() });
     mockTasksService.findAll.mockReturnValue([task]);
 
-    const [dto] = controller.findAll() as TaskResponseDto[];
+    const [dto] = controller.findAll();
     const result = TaskResponseSchema.safeParse(dto);
 
     expect(result.success).toBe(true);
