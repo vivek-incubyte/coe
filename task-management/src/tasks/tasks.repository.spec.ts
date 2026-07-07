@@ -336,6 +336,132 @@ describe('findAll with pagination', () => {
   });
 });
 
+describe('findAll with search', () => {
+  it('matches tasks by a case-insensitive substring of the title', async () => {
+    const task = await repo.create({ title: 'Fix urgent bug' });
+    await repo.create({ title: 'Write documentation' });
+
+    const result = await repo.findAll({
+      search: 'URGENT',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe(task.title);
+  });
+
+  it('matches tasks by a case-insensitive substring of the description', async () => {
+    await repo.create({
+      title: 'Task one',
+      description: 'Contains deployment instructions',
+    });
+    await repo.create({
+      title: 'Task two',
+      description: 'Unrelated content',
+    });
+
+    const result = await repo.findAll({
+      search: 'PLOY',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+  });
+
+  it('returns a task once when both title and description match, not duplicated', async () => {
+    await repo.create({
+      title: 'Deploy the service',
+      description: 'Remember to deploy carefully',
+    });
+    await repo.create({ title: 'Write docs' });
+
+    const result = await repo.findAll({
+      search: 'deploy',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+  });
+
+  it('returns all matching tasks', async () => {
+    await repo.create({ title: 'Deploy API' });
+    await repo.create({ title: 'Deploy Worker' });
+    await repo.create({ title: 'Write docs' });
+
+    const result = await repo.findAll({
+      search: 'deploy',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('matches a task by title even when its description is null', async () => {
+    const task = await repo.create({ title: 'No description here' });
+    await repo.create({ title: 'Something else entirely' });
+
+    const result = await repo.findAll({
+      search: 'description',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(task.id);
+  });
+
+  it('returns an empty array when no task matches the search term', async () => {
+    await repo.create({ title: 'Fix urgent bug' });
+    await repo.create({ title: 'Write documentation' });
+
+    const result = await repo.findAll({
+      search: 'nonexistentterm',
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('applies the search filter before pagination limit/offset', async () => {
+    await repo.create({ title: 'Write documentation' });
+    await repo.create({ title: 'Deploy service A' });
+    await repo.create({ title: 'Deploy service B' });
+
+    const result = await repo.findAll({
+      search: 'Deploy',
+      limit: 1,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Deploy service A');
+  });
+
+  it('returns every task when the search term is an empty string', async () => {
+    await repo.create({ title: 'Fix urgent bug' });
+    await repo.create({ title: 'Write documentation' });
+
+    const result = await repo.findAll({ search: '', limit: 20, offset: 0 });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('matches tasks using a single-character search term', async () => {
+    const match = await repo.create({ title: 'Cat' });
+    await repo.create({ title: 'Zebra' });
+
+    const result = await repo.findAll({ search: 'c', limit: 20, offset: 0 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(match.id);
+  });
+});
+
 describe('update', () => {
   // Z — Zero: nothing to update
   it('returns null when the table has no rows at all', async () => {

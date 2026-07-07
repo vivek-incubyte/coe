@@ -1,59 +1,46 @@
 ---
-feature: 'Task Management - Full CRUD API'
-size: 'FEATURE'
-risk: 'MODERATE'
-discovery: 'not done'
-design_brief: ''
-boundaries: ''
-current_phase: 'done — shipped'
-phase_spec: 'docs/specs/tasks-crud-api-spec.md — confirmed'
-architecture: 'Layered (Controller->Service->Repository->Drizzle) — ZodValidationPipe in src/common/pipes/, parameter-scoped application, built in Slice 1'
-tdd_plan: 'not yet written'
-current_slice: 'Slice 4 — verifying'
+feature: "Task Search"
+size: "SMALL"
+risk: "LOW"
+discovery: "not done"
+design_brief: ""
+boundaries: ""
+current_phase: "triaged"
+phase_spec: "not yet written"
+architecture: "not yet decided"
+tdd_plan: "not yet written"
+current_slice: ""
 ---
 
 # Bee State
 
 ## Feature
-
-Task Management - Full CRUD API
+Task Search
 
 ## Triage
-
-Size: FEATURE
-Risk: MODERATE
+Size: SMALL
+Risk: LOW
 
 ## Discovery
-
 not done
 
 ## Current Phase
-
-done — shipped
+triaged
 
 ## Phase Spec
-
-docs/specs/tasks-crud-api-spec.md — confirmed
+not yet written
 
 ## Architecture
-
-Layered (Controller->Service->Repository->Drizzle) — ZodValidationPipe in src/common/pipes/, parameter-scoped application, built in Slice 1
+not yet decided
 
 ## Current Slice
 
-Slice 4 — verifying
 
 ## TDD Plan
-
 not yet written
 
 ## Phase Progress
-
 n/a
 
 ## Slice Progress
 
-Slice 1: done
-Slice 2: done
-Slice 3: done
-Slice 4: done

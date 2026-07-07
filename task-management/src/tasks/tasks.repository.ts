@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, ilike, or } from 'drizzle-orm';
 import {
   DATABASE_CONNECTION,
   type Database,
@@ -32,14 +32,29 @@ export class TasksRepository {
   }
 
   async findAll(pagination: PaginationQuery): Promise<Task[]> {
+    const searchFilter = this.buildSearchFilter(pagination.search);
+
     const tasks = await this.db
       .select()
       .from(TABLE_TASKS)
+      .where(searchFilter)
       .orderBy(asc(TABLE_TASKS.createdAt))
       .limit(pagination.limit)
       .offset(pagination.offset);
 
     return tasks.map((row) => this.toTask(row)!);
+  }
+
+  private buildSearchFilter(search: string | undefined) {
+    if (!search) {
+      return undefined;
+    }
+
+    const term = `%${search}%`;
+    return or(
+      ilike(TABLE_TASKS.title, term),
+      ilike(TABLE_TASKS.description, term),
+    );
   }
 
   async findById(id: string): Promise<Task | null> {

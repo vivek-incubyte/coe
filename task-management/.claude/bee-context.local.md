@@ -1,49 +1,50 @@
-## Context: Full CRUD API for Tasks
+## Context: Task Search Feature
+
+Analysis method: text-based pattern matching (no LSP tool available in this environment — findings are grep/read-based)
 
 ### Project Structure
 
-- Stack: TypeScript, NestJS 11, Postgres via Drizzle ORM, Zod v4. Vitest for unit/integration tests (Jest config exists for e2e but unused, no e2e specs yet).
-- Layout: single NestJS app, feature-module style. `src/tasks/` (controller, service, repository, schema, specs) + `src/infra/database/` (Drizzle connection, schema, migrations).
-- Key deps: @nestjs/* core/common/config/platform-express, drizzle-orm + postgres driver, zod v4 (uses z.iso.datetime(), z.uuid() top-level helpers), drizzle-kit. No @nestjs/swagger, no nestjs-zod, no class-validator/class-transformer.
+- **Stack**: TypeScript, NestJS 11, Node, Drizzle ORM 0.45 + Postgres, Zod 4.4 for validation
+- **Build**: pnpm, `nest build`; Vitest 4 for unit/integration tests
+- **Layout**: Single NestJS app, feature-module style — `src/tasks/` (domain module), `src/infra/database/` (connection/schema/migrations), `src/common/` (generic pipes)
 
 ### Architecture Pattern
 
-- Layered MVC-ish: Controller → Service → Repository → Drizzle DB connection (DATABASE_CONNECTION token from @Global() DatabaseModule).
-- Currently incomplete: TasksService is an in-memory stub, NOT wired to TasksRepository (which already has full CRUD, Drizzle-backed, tested).
-- Clean one-directional dependency flow, no violations found.
+- Layered CRUD — Controller → Service → Repository → Drizzle
+- `TasksController` (`src/tasks/tasks.controller.ts`) → `TasksService` (`src/tasks/tasks.service.ts`) → `TasksRepository` (`src/tasks/tasks.repository.ts`) → Drizzle
+- Domain Zod schema (`task.schema.ts`) is a shared kernel imported by all layers and all specs
 
 ### Test Infrastructure
 
-- Vitest (describe/it/expect/vi), co-located *.spec.ts next to source.
-- Controller tests: `Test.createTestingModule` with `useValue` provider mocks (`vi.fn()`).
-- Service tests: direct instantiation (`new TasksService()`) — will need mock repository once wired.
-- Repository integration tests: real Postgres via `process.env.TEST_DATABASE_URL`, runs Drizzle migrations in beforeAll, truncates table in beforeEach, closes connection in afterAll.
-- **Strict ZOMBIES-style test naming convention** across all specs: `// Z — Zero`, `// O — One`, `// M — Many`, `// B — Boundary`, `// I — Interface`, `// E — Exception`. New tests must follow this.
+- Framework: Vitest, co-located `*.spec.ts` next to source
+- Run command: `npm test` (= `vitest run`)
+- Mocking: `vi.fn()` for repository/service test doubles; controller tests use `Test.createTestingModule` with `useValue`-mocked service
+- Integration tests: `tasks.repository.spec.ts` runs real integration tests against Postgres via `TEST_DATABASE_URL`, using `drizzle-migrate` in `beforeAll`, `db.delete(TABLE_TASKS)` in `beforeEach`, `sql.end()` in `afterAll` — this is the pattern for any new repository search method
+- Per project convention (user memory): no ZOMBIES letter-comment headers in test files, even though older specs have them
 
 ### Project Conventions
 
-- No CLAUDE.md. User's standing memory: no hand-rolled enum files — derive status literals from the Zod schema (`TaskStatus = z.enum([...])` in task.schema.ts is already the single source of truth, referenced via `TaskStatus.enum.OPEN` etc). New DTOs must keep deriving from this schema.
-- ESLint flat config, typescript-eslint recommendedTypeChecked + prettier. `no-explicit-any: off`, `no-floating-promises: warn`.
-- Conventional commits (`feat(repository): ...`, `fix(database): ...`).
-- DI via Nest `@Inject`/constructor injection; symbol token pattern (`DATABASE_CONNECTION`) is the template for new provider tokens.
-- Repository maps raw Drizzle rows to domain objects via private `toTask()` mapper.
-- Controller currently does DTO mapping inline in the route handler (no serialization pipe exists).
+- Status literals always derive from the `TaskStatus` Zod enum (`TaskStatus.enum.OPEN`) — never hand-rolled (user memory: no enum files in task-management)
+- Validation via `ZodValidationPipe` applied as parameter-scoped instances (`@Query(new ZodValidationPipe(Schema))`)
+- Repository input/output types (`CreateTaskInput`, `UpdateTaskInput`) are distinct from wire-shape DTOs — intentional layering
+- Commit style: Conventional commits (`feat(tasks): ...`, `fix(database): ...`)
 
 ### Change Area
 
-Files to modify:
+- `GET /tasks` (`TasksController.findAll`) already accepts `PaginationQuerySchema` (`limit`/`offset`) via `@Query(new ZodValidationPipe(...))`, calls `TasksService.findAll(pagination)` → `TasksRepository.findAll(pagination)` → `db.select().from(TABLE_TASKS).orderBy(asc(...)).limit().offset()`
+- Files likely to change:
+  - `src/tasks/task.schema.ts` — extend query schema with an optional `search` string field
+  - `src/tasks/tasks.repository.ts` — `findAll` needs a `where` clause matching `title` OR `description` case-insensitively when search term present (`ilike` from `drizzle-orm`, or `or(ilike(...), ilike(...))`) — no such import exists yet in repo, this will be the first compound `where` predicate here
+  - `src/tasks/tasks.controller.ts` / `tasks.service.ts` — likely pass-through, no logic change needed since they already forward the whole pagination/query object
+  - Spec files: `task.schema.spec.ts`, `tasks.repository.spec.ts` (integration), `tasks.service.spec.ts`, `tasks.controller.spec.ts`
+- `description` column is nullable — need to double check `ilike` OR predicate null handling
+- **Decision requested by developer**: search matches **title and description** (case-insensitive)
 
-- `src/tasks/tasks.service.ts` — inject TasksRepository, replace in-memory array with delegation; add findOne/create/update/remove.
-- `src/tasks/tasks.controller.ts` — add POST, GET /:id, PATCH /:id, DELETE /:id alongside existing GET.
-- `src/tasks/task.schema.ts` — add request DTOs (CreateTaskSchema/Dto, UpdateTaskSchema/Dto), deriving status from existing TaskStatus.
-- `src/tasks/tasks.service.spec.ts`, `tasks.controller.spec.ts` — full rewrite/expansion needed.
+### Existing Documentation
 
-Cross-cutting: **zero existing request validation** (no Zod pipe, no class-validator). **No exception filters** — no typed error hierarchy exists; 404/400 handling would rely on Nest's built-in HttpException/NotFoundException/BadRequestException, or a new Zod validation pipe would be new infra. This is a real architecture decision, not an established pattern to follow. No auth/logging/caching/rate-limiting anywhere — unauthenticated single-tenant API.
-
-### Tidy Opportunities
-
-None blocking. The current tasks.service.ts stub + its spec are throwaway and will be wholesale replaced as in-scope work (not pre-existing debt to tidy separately). No dead code, no skipped tests, no long functions found.
+- `docs/specs/tasks-crud-api-spec.md` — CRUD spec (Slices 1-4, all done). Explicitly lists "Sorting or filtering tasks by status or any other field" as Out of Scope — so this search feature is a net-new capability beyond that spec
+- `docs/architecture-assessment.md` — flags pre-existing `TaskStatus`/`taskStatusEnum` duplication (unrelated, out of scope for this task)
 
 ### Design System
 
-UI-involved: no. Backend-only REST API, no frontend signals.
+- UI-involved: no — backend-only NestJS REST API

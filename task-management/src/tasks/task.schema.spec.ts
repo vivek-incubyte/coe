@@ -67,6 +67,24 @@ describe('PaginationQuerySchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('accepts a search string and includes it in the parsed result', () => {
+    const result = PaginationQuerySchema.parse({ search: 'urgent' });
+
+    expect(result).toEqual({ search: 'urgent', limit: 20, offset: 0 });
+  });
+
+  it('search omitted defaults to undefined', () => {
+    const result = PaginationQuerySchema.parse({});
+
+    expect(result).toEqual({ search: undefined, limit: 20, offset: 0 });
+  });
+
+  it('rejects an empty or whitespace-only search string', () => {
+    const result = PaginationQuerySchema.safeParse({ search: '   ' });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('TaskIdParamSchema', () => {
