@@ -6,7 +6,7 @@ export const taskStatusEnum = pgEnum('task_status', [
   'DONE',
 ]);
 
-export const tasks = pgTable('tasks', {
+export const TABLE_TASKS = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
   description: text('description'),

@@ -20,3 +20,27 @@ export const TaskResponseSchema = z.object({
   createdAt: z.iso.datetime(),
 });
 export type TaskResponseDto = z.infer<typeof TaskResponseSchema>;
+
+export const TaskIdParamSchema = z.uuid();
+
+export const PaginationQuerySchema = z.object({
+  limit: z.coerce.number().int().nonnegative().default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
+
+export const CreateTaskSchema = z.strictObject({
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  status: TaskStatus.default(TaskStatus.enum.OPEN),
+});
+export type CreateTaskDto = z.infer<typeof CreateTaskSchema>;
+
+export const UpdateTaskSchema = z
+  .strictObject({
+    title: z.string().min(1).max(200),
+    description: z.string().max(2000),
+    status: TaskStatus,
+  })
+  .partial();
+export type UpdateTaskDto = z.infer<typeof UpdateTaskSchema>;

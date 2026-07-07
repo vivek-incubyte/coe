@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import {
   DATABASE_CONNECTION,
   type Database,
 } from '../infra/database/database.module';
-import { tasks } from '../infra/database/schema';
-import type { Task, TaskStatus } from './task.schema';
+import { TABLE_TASKS } from '../infra/database/schema';
+import type { Task, TaskStatus, PaginationQuery } from './task.schema';
 
 export type CreateTaskInput = {
   title: string;
@@ -21,24 +21,33 @@ export class TasksRepository {
 
   async create(input: CreateTaskInput): Promise<Task> {
     const [row] = await this.db
-      .insert(tasks)
+      .insert(TABLE_TASKS)
       .values({
         title: input.title,
         description: input.description,
         status: input.status,
       })
       .returning();
-    return this.toTask(row);
+    return this.toTask(row)!;
   }
 
-  async findAll(): Promise<Task[]> {
-    const rows = await this.db.select().from(tasks);
-    return rows.map((row) => this.toTask(row));
+  async findAll(pagination: PaginationQuery): Promise<Task[]> {
+    const tasks = await this.db
+      .select()
+      .from(TABLE_TASKS)
+      .orderBy(asc(TABLE_TASKS.createdAt))
+      .limit(pagination.limit)
+      .offset(pagination.offset);
+
+    return tasks.map((row) => this.toTask(row)!);
   }
 
   async findById(id: string): Promise<Task | null> {
-    const [row] = await this.db.select().from(tasks).where(eq(tasks.id, id));
-    return row ? this.toTask(row) : null;
+    const [task] = await this.db
+      .select()
+      .from(TABLE_TASKS)
+      .where(eq(TABLE_TASKS.id, id));
+    return this.toTask(task);
   }
 
   async update(id: string, input: UpdateTaskInput): Promise<Task | null> {
@@ -46,29 +55,33 @@ export class TasksRepository {
       return this.findById(id);
     }
 
-    const [row] = await this.db
-      .update(tasks)
+    const [task] = await this.db
+      .update(TABLE_TASKS)
       .set(input)
-      .where(eq(tasks.id, id))
+      .where(eq(TABLE_TASKS.id, id))
       .returning();
-    return row ? this.toTask(row) : null;
+    return this.toTask(task);
   }
 
   async delete(id: string): Promise<boolean> {
-    const [row] = await this.db
-      .delete(tasks)
-      .where(eq(tasks.id, id))
+    const [task] = await this.db
+      .delete(TABLE_TASKS)
+      .where(eq(TABLE_TASKS.id, id))
       .returning();
-    return row !== undefined;
+    return task !== undefined;
   }
 
-  private toTask(row: typeof tasks.$inferSelect): Task {
+  private toTask(task: typeof TABLE_TASKS.$inferSelect | null): Task | null {
+    if (!task) {
+      return null;
+    }
+
     return {
-      id: row.id,
-      title: row.title,
-      description: row.description ?? undefined,
-      status: row.status,
-      createdAt: row.createdAt,
+      id: task.id,
+      title: task.title,
+      description: task.description ?? undefined,
+      status: task.status,
+      createdAt: task.createdAt,
     };
   }
 }

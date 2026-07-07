@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '../infra/database/schema';
-import { tasks } from '../infra/database/schema';
+import { TABLE_TASKS } from '../infra/database/schema';
 import { TaskStatus } from './task.schema';
 import { TasksRepository } from './tasks.repository';
 
@@ -28,7 +28,7 @@ beforeAll(async () => {
 }, 30_000);
 
 beforeEach(async () => {
-  await db.delete(tasks);
+  await db.delete(TABLE_TASKS);
 });
 
 afterAll(async () => {
@@ -40,28 +40,28 @@ describe('create', () => {
   it('inserts exactly one row in the database', async () => {
     await repo.create({ title: 'Buy milk' });
 
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(1);
   });
 
   it('persists the title to the database', async () => {
     await repo.create({ title: 'Buy milk' });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.title).toBe('Buy milk');
   });
 
   it('stores OPEN as the default status when none is provided', async () => {
     await repo.create({ title: 'Default status task' });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.status).toBe(TaskStatus.enum.OPEN);
   });
 
   it('stores null for description when none is provided', async () => {
     await repo.create({ title: 'No description' });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.description).toBeNull();
   });
 
@@ -70,7 +70,7 @@ describe('create', () => {
     await repo.create({ title: 'First' });
     await repo.create({ title: 'Second' });
 
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(2);
     expect(rows[0].id).not.toBe(rows[1].id);
   });
@@ -79,28 +79,28 @@ describe('create', () => {
   it('persists a single-character title without truncation', async () => {
     await repo.create({ title: 'X' });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.title).toBe('X');
   });
 
   it('persists an explicit description when provided', async () => {
     await repo.create({ title: 'With desc', description: 'Some details' });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.description).toBe('Some details');
   });
 
   it('persists IN_PROGRESS status when explicitly set', async () => {
     await repo.create({ title: 'WIP', status: TaskStatus.enum.IN_PROGRESS });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.status).toBe(TaskStatus.enum.IN_PROGRESS);
   });
 
   it('persists DONE status when explicitly set', async () => {
     await repo.create({ title: 'Done task', status: TaskStatus.enum.DONE });
 
-    const [row] = await db.select().from(tasks);
+    const [row] = await db.select().from(TABLE_TASKS);
     expect(row.status).toBe(TaskStatus.enum.DONE);
   });
 
@@ -108,14 +108,20 @@ describe('create', () => {
   it('returns a task whose id matches the row stored in the database', async () => {
     const task = await repo.create({ title: 'ID check' });
 
-    const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    const [row] = await db
+      .select()
+      .from(TABLE_TASKS)
+      .where(eq(TABLE_TASKS.id, task.id));
     expect(row).toBeDefined();
   });
 
   it('returns a task whose title matches the persisted row', async () => {
     const task = await repo.create({ title: 'Title round-trip' });
 
-    const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    const [row] = await db
+      .select()
+      .from(TABLE_TASKS)
+      .where(eq(TABLE_TASKS.id, task.id));
     expect(task.title).toBe(row.title);
   });
 
@@ -129,7 +135,7 @@ describe('create', () => {
   it('does not insert any row when title is null', async () => {
     await repo.create({ title: null as unknown as string }).catch(() => {});
 
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(0);
   });
 
@@ -150,7 +156,7 @@ describe('create', () => {
       })
       .catch(() => {});
 
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(0);
   });
 });
@@ -210,7 +216,7 @@ describe('findById', () => {
 describe('findAll', () => {
   // Z — Zero: table is empty
   it('returns an empty array when there are no tasks', async () => {
-    const result = await repo.findAll();
+    const result = await repo.findAll({ limit: 1000, offset: 0 });
     expect(result).toEqual([]);
   });
 
@@ -218,7 +224,7 @@ describe('findAll', () => {
   it('returns a single-element array when one task exists', async () => {
     await repo.create({ title: 'Only task' });
 
-    const result = await repo.findAll();
+    const result = await repo.findAll({ limit: 1000, offset: 0 });
     expect(result).toHaveLength(1);
   });
 
@@ -228,7 +234,7 @@ describe('findAll', () => {
     await repo.create({ title: 'Second' });
     await repo.create({ title: 'Third' });
 
-    const result = await repo.findAll();
+    const result = await repo.findAll({ limit: 1000, offset: 0 });
 
     expect(result).toHaveLength(3);
     expect(result.map((t) => t.title).sort()).toEqual(
@@ -240,7 +246,7 @@ describe('findAll', () => {
   it('maps a null description to undefined in the returned task', async () => {
     await repo.create({ title: 'No description' });
 
-    const [result] = await repo.findAll();
+    const [result] = await repo.findAll({ limit: 1000, offset: 0 });
     expect(result.description).toBeUndefined();
   });
 
@@ -249,8 +255,8 @@ describe('findAll', () => {
     await repo.create({ title: 'A' });
     await repo.create({ title: 'B' });
 
-    const result = await repo.findAll();
-    const rows = await db.select().from(tasks);
+    const result = await repo.findAll({ limit: 1000, offset: 0 });
+    const rows = await db.select().from(TABLE_TASKS);
 
     expect(result.map((t) => t.id).sort()).toEqual(
       rows.map((r) => r.id).sort(),
@@ -258,6 +264,76 @@ describe('findAll', () => {
   });
 
   // E — Exception: not applicable — findAll takes no input to be invalid.
+});
+
+describe('findAll with pagination', () => {
+  it('returns an empty array when the table has no rows at all', async () => {
+    const result = await repo.findAll({ limit: 20, offset: 0 });
+    expect(result).toEqual([]);
+  });
+
+  it('returns only up to the given limit', async () => {
+    await repo.create({ title: 'First' });
+    await repo.create({ title: 'Second' });
+    await repo.create({ title: 'Third' });
+
+    const result = await repo.findAll({ limit: 2, offset: 0 });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('skips the given offset before returning rows', async () => {
+    await repo.create({ title: 'First' });
+    await repo.create({ title: 'Second' });
+    await repo.create({ title: 'Third' });
+
+    const result = await repo.findAll({ limit: 20, offset: 1 });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((t) => t.title)).toEqual(['Second', 'Third']);
+  });
+
+  it('returns rows in a stable creation order across pages', async () => {
+    await repo.create({ title: 'First' });
+    await repo.create({ title: 'Second' });
+    await repo.create({ title: 'Third' });
+
+    const firstPage = await repo.findAll({ limit: 1, offset: 0 });
+    const secondPage = await repo.findAll({ limit: 1, offset: 1 });
+    const thirdPage = await repo.findAll({ limit: 1, offset: 2 });
+
+    expect([
+      firstPage[0].title,
+      secondPage[0].title,
+      thirdPage[0].title,
+    ]).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('returns an empty array when the offset is beyond the number of rows', async () => {
+    await repo.create({ title: 'Only task' });
+
+    const result = await repo.findAll({ limit: 20, offset: 5 });
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns an empty array when the limit is zero', async () => {
+    await repo.create({ title: 'First' });
+    await repo.create({ title: 'Second' });
+
+    const result = await repo.findAll({ limit: 0, offset: 0 });
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns every row when the limit is large enough to cover all rows', async () => {
+    await repo.create({ title: 'First' });
+    await repo.create({ title: 'Second' });
+
+    const result = await repo.findAll({ limit: 1000, offset: 0 });
+
+    expect(result).toHaveLength(2);
+  });
 });
 
 describe('update', () => {
@@ -326,7 +402,10 @@ describe('update', () => {
 
     const updated = await repo.update(created.id, { title: 'After' });
 
-    const [row] = await db.select().from(tasks).where(eq(tasks.id, created.id));
+    const [row] = await db
+      .select()
+      .from(TABLE_TASKS)
+      .where(eq(TABLE_TASKS.id, created.id));
     expect(updated?.title).toBe(row.title);
   });
 
@@ -370,7 +449,7 @@ describe('delete', () => {
     const result = await repo.delete(created.id);
 
     expect(result).toBe(true);
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(0);
   });
 
@@ -381,7 +460,7 @@ describe('delete', () => {
 
     await repo.delete(first.id);
 
-    const rows = await db.select().from(tasks);
+    const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(second.id);
   });

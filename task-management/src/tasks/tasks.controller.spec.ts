@@ -1,20 +1,34 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  PaginationQuery,
+  Task,
+  TaskResponseDto,
+  TaskStatus,
+} from './task.schema';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
-import { Task, TaskResponseSchema, TaskStatus } from './task.schema';
-import { randomUUID } from 'node:crypto';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
   title: 'Test task',
-  description: 'Sample Task',
+  description: 'Sample task',
   status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
   ...overrides,
 });
 
-const mockTasksService = { findAll: vi.fn() };
+const defaultPagination: PaginationQuery = { limit: 20, offset: 0 };
+
+const mockTasksService = {
+  findAll: vi.fn(),
+  findOne: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn(),
+};
 
 describe('TasksController', () => {
   let controller: TasksController;
@@ -30,80 +44,226 @@ describe('TasksController', () => {
     controller = module.get<TasksController>(TasksController);
   });
 
-  // Z — Zero: controller calls service exactly once and returns empty when service has no tasks
-  it('delegates to the service and returns an empty array when there are no tasks', () => {
-    mockTasksService.findAll.mockReturnValue([]);
+  describe('findAll', () => {
+    it('returns an empty array when the service has no tasks', async () => {
+      mockTasksService.findAll.mockResolvedValue([]);
 
-    expect(controller.findAll()).toEqual([]);
-    expect(mockTasksService.findAll).toHaveBeenCalledOnce();
-  });
+      const result = await controller.findAll(defaultPagination);
 
-  // O — One: controller converts createdAt Date → ISO string and passes other fields through unchanged
-  it('maps Task to TaskResponseDto: converts createdAt to ISO string, passes scalar fields through', () => {
-    const dateString = '2024-06-15T12:00:00.000Z';
-    const fixedDate = new Date(dateString);
-    const task = makeTask({
-      createdAt: fixedDate,
-      description: 'some description',
-    });
-    mockTasksService.findAll.mockReturnValue([task]);
-
-    const [dto] = controller.findAll();
-
-    expect(dto.createdAt).toBe(dateString);
-    expect(dto.id).toBe(task.id);
-    expect(dto.title).toBe(task.title);
-    expect(dto.status).toBe(task.status);
-    expect(dto.description).toBe(task.description);
-  });
-
-  // M — Many: the Date → string conversion is applied to every task, not just the first
-  it('applies the createdAt conversion to every task the service returns', () => {
-    const dateString1 = '2024-01-01T00:00:00.000Z';
-    const dateString2 = '2024-06-15T12:30:00.000Z';
-    const dateString3 = '2024-12-31T23:59:59.999Z';
-
-    const tasks = [
-      makeTask({ createdAt: new Date(dateString1) }),
-      makeTask({ createdAt: new Date(dateString2) }),
-      makeTask({ createdAt: new Date(dateString3) }),
-    ];
-    mockTasksService.findAll.mockReturnValue(tasks);
-
-    const result = controller.findAll();
-
-    expect(result[0].createdAt).toBe(dateString1);
-    expect(result[1].createdAt).toBe(dateString2);
-    expect(result[2].createdAt).toBe(dateString3);
-  });
-
-  // B — Boundary: undefined description is preserved as-is, not coerced to null or empty string
-  it('preserves undefined description in the DTO without coercion', () => {
-    const task = makeTask({ description: undefined });
-    mockTasksService.findAll.mockReturnValue([task]);
-
-    const [dto] = controller.findAll();
-
-    expect(dto.description).toBeUndefined();
-  });
-
-  // I — Interface: the full DTO output satisfies the TaskResponseSchema contract
-  it('produces a DTO that is valid against the TaskResponseSchema', () => {
-    const task = makeTask({ createdAt: new Date() });
-    mockTasksService.findAll.mockReturnValue([task]);
-
-    const [dto] = controller.findAll();
-    const result = TaskResponseSchema.safeParse(dto);
-
-    expect(result.success).toBe(true);
-  });
-
-  // E — Exception: service errors propagate; NestJS global filter maps them to 500
-  it('propagates exceptions thrown by the service', () => {
-    mockTasksService.findAll.mockImplementation(() => {
-      throw new Error('storage unavailable');
+      expect(result).toEqual([]);
     });
 
-    expect(() => controller.findAll()).toThrow('storage unavailable');
+    it('returns a bare array, not wrapped in a pagination envelope', async () => {
+      mockTasksService.findAll.mockResolvedValue([makeTask()]);
+
+      const result = await controller.findAll(defaultPagination);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).not.toHaveProperty('items');
+      expect(result).not.toHaveProperty('total');
+    });
+
+    it('maps a task to a response dto, converting createdAt to an ISO string', async () => {
+      const fixedDate = new Date('2024-06-15T12:00:00.000Z');
+      const task = makeTask({ createdAt: fixedDate });
+      mockTasksService.findAll.mockResolvedValue([task]);
+
+      const [dto] = await controller.findAll(defaultPagination);
+
+      expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
+      expect(dto.id).toBe(task.id);
+      expect(dto.title).toBe(task.title);
+      expect(dto.status).toBe(task.status);
+      expect(dto.description).toBe(task.description);
+    });
+
+    it('applies the createdAt conversion to every task returned', async () => {
+      const tasks = [
+        makeTask({ createdAt: new Date('2024-01-01T00:00:00.000Z') }),
+        makeTask({ createdAt: new Date('2024-02-01T00:00:00.000Z') }),
+      ];
+      mockTasksService.findAll.mockResolvedValue(tasks);
+
+      const result: TaskResponseDto[] =
+        await controller.findAll(defaultPagination);
+
+      expect(result[0].createdAt).toBe('2024-01-01T00:00:00.000Z');
+      expect(result[1].createdAt).toBe('2024-02-01T00:00:00.000Z');
+    });
+
+    it('passes the pagination params through to the service unchanged', async () => {
+      mockTasksService.findAll.mockResolvedValue([]);
+      const pagination: PaginationQuery = { limit: 5, offset: 10 };
+
+      await controller.findAll(pagination);
+
+      expect(mockTasksService.findAll).toHaveBeenCalledWith(pagination);
+    });
+  });
+
+  describe('findOne', () => {
+    it('returns the mapped task when the service finds a match', async () => {
+      const task = makeTask();
+      mockTasksService.findOne.mockResolvedValue(task);
+
+      const dto = await controller.findOne(task.id);
+
+      expect(dto.id).toBe(task.id);
+      expect(dto.title).toBe(task.title);
+      expect(dto.createdAt).toBe(task.createdAt.toISOString());
+    });
+
+    it('passes the given id through to the service', async () => {
+      const id = randomUUID();
+      mockTasksService.findOne.mockResolvedValue(makeTask({ id }));
+
+      await controller.findOne(id);
+
+      expect(mockTasksService.findOne).toHaveBeenCalledWith(id);
+    });
+
+    it('propagates the NotFoundException the service throws', async () => {
+      mockTasksService.findOne.mockRejectedValue(
+        new NotFoundException('Task with id not found'),
+      );
+
+      await expect(controller.findOne(randomUUID())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('create', () => {
+    it('passes the createTaskDto through to the service unchanged', async () => {
+      mockTasksService.create.mockResolvedValue(makeTask());
+      const createTaskDto = {
+        title: 'Write tests',
+        description: 'Cover the create endpoint',
+        status: TaskStatus.enum.OPEN,
+      };
+
+      await controller.create(createTaskDto);
+
+      expect(mockTasksService.create).toHaveBeenCalledWith(createTaskDto);
+    });
+
+    it('returns the mapped response dto with the id and status the service returns', async () => {
+      const createdTask = makeTask({ status: TaskStatus.enum.OPEN });
+      mockTasksService.create.mockResolvedValue(createdTask);
+
+      const dto = await controller.create({
+        title: createdTask.title,
+        status: TaskStatus.enum.OPEN,
+      });
+
+      expect(dto.id).toBe(createdTask.id);
+      expect(dto.title).toBe(createdTask.title);
+      expect(dto.status).toBe(TaskStatus.enum.OPEN);
+    });
+
+    it('converts createdAt to an ISO string in the response', async () => {
+      const fixedDate = new Date('2024-06-15T12:00:00.000Z');
+      const createdTask = makeTask({ createdAt: fixedDate });
+      mockTasksService.create.mockResolvedValue(createdTask);
+
+      const dto = await controller.create({
+        title: createdTask.title,
+        status: TaskStatus.enum.OPEN,
+      });
+
+      expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
+    });
+  });
+
+  describe('update', () => {
+    it('passes the id and updateTaskDto through to the service unchanged', async () => {
+      const task = makeTask();
+      mockTasksService.update.mockResolvedValue(task);
+      const updateTaskDto = { title: 'Updated title' };
+
+      await controller.update(task.id, updateTaskDto);
+
+      expect(mockTasksService.update).toHaveBeenCalledWith(
+        task.id,
+        updateTaskDto,
+      );
+    });
+
+    it('returns the mapped response dto reflecting the service result', async () => {
+      const updatedTask = makeTask({
+        title: 'Updated title',
+        status: TaskStatus.enum.DONE,
+      });
+      mockTasksService.update.mockResolvedValue(updatedTask);
+
+      const dto = await controller.update(updatedTask.id, {
+        title: 'Updated title',
+        status: TaskStatus.enum.DONE,
+      });
+
+      expect(dto.id).toBe(updatedTask.id);
+      expect(dto.title).toBe('Updated title');
+      expect(dto.status).toBe(TaskStatus.enum.DONE);
+    });
+
+    it('returns the mapped response dto unchanged when the update body is empty', async () => {
+      const task = makeTask();
+      mockTasksService.update.mockResolvedValue(task);
+
+      const dto = await controller.update(task.id, {});
+
+      expect(dto.title).toBe(task.title);
+      expect(dto.description).toBe(task.description);
+      expect(dto.status).toBe(task.status);
+    });
+
+    it('converts createdAt to an ISO string in the response', async () => {
+      const fixedDate = new Date('2024-06-15T12:00:00.000Z');
+      const updatedTask = makeTask({ createdAt: fixedDate });
+      mockTasksService.update.mockResolvedValue(updatedTask);
+
+      const dto = await controller.update(updatedTask.id, {
+        title: updatedTask.title,
+      });
+
+      expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
+    });
+
+    it('propagates the NotFoundException the service throws', async () => {
+      mockTasksService.update.mockRejectedValue(
+        new NotFoundException('Task with id not found'),
+      );
+
+      await expect(
+        controller.update(randomUUID(), { title: 'Anything' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('resolves without a value when the service deletes the task', async () => {
+      mockTasksService.remove.mockResolvedValue(undefined);
+
+      await expect(controller.remove(randomUUID())).resolves.toBeUndefined();
+    });
+
+    it('passes the given id through to the service', async () => {
+      const id = randomUUID();
+      mockTasksService.remove.mockResolvedValue(undefined);
+
+      await controller.remove(id);
+
+      expect(mockTasksService.remove).toHaveBeenCalledWith(id);
+    });
+
+    it('propagates the NotFoundException the service throws', async () => {
+      mockTasksService.remove.mockRejectedValue(
+        new NotFoundException('Task with id not found'),
+      );
+
+      await expect(controller.remove(randomUUID())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });
