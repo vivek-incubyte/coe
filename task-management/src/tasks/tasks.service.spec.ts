@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Task, TaskStatus } from './task.schema';
 import { TasksRepository } from './tasks.repository';
 import { TasksService } from './tasks.service';
+import { UsersService } from '../users/users.service';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
@@ -11,6 +12,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   description: 'A description',
   status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
+  userId: null,
   ...overrides,
 });
 
@@ -30,13 +32,30 @@ const makeMockRepository = (): MockTasksRepository => ({
   delete: vi.fn(),
 });
 
+type MockUsersService = {
+  create: ReturnType<typeof vi.fn>;
+  findAll: ReturnType<typeof vi.fn>;
+  findById: ReturnType<typeof vi.fn>;
+};
+
+const makeMockUsersService = (): MockUsersService => ({
+  create: vi.fn(),
+  findAll: vi.fn(),
+  findById: vi.fn(),
+});
+
 describe('TasksService', () => {
   let repository: MockTasksRepository;
+  let usersService: MockUsersService;
   let service: TasksService;
 
   beforeEach(() => {
     repository = makeMockRepository();
-    service = new TasksService(repository as unknown as TasksRepository);
+    usersService = makeMockUsersService();
+    service = new TasksService(
+      repository as unknown as TasksRepository,
+      usersService as unknown as UsersService,
+    );
   });
 
   describe('findAll', () => {
@@ -155,6 +174,66 @@ describe('TasksService', () => {
       expect(fetched).toEqual(created);
       expect(repository.findById).toHaveBeenCalledWith(created.id);
     });
+
+    it('does not call usersService.findById when userId is omitted', async () => {
+      repository.create.mockResolvedValue(makeTask());
+
+      await service.create({
+        title: 'No user assigned',
+        status: TaskStatus.enum.OPEN,
+      });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.create).toHaveBeenCalled();
+    });
+
+    it('does not call usersService.findById when userId is explicitly null', async () => {
+      repository.create.mockResolvedValue(makeTask());
+
+      await service.create({
+        title: 'No user assigned',
+        status: TaskStatus.enum.OPEN,
+        userId: null,
+      });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.create).toHaveBeenCalled();
+    });
+
+    it('validates the userId exists before creating when userId is provided', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue({
+        id: userId,
+        name: 'Assignee',
+        email: 'assignee@example.com',
+        createdAt: new Date(),
+      });
+      const createTaskDto = {
+        title: 'Assigned task',
+        status: TaskStatus.enum.OPEN,
+        userId,
+      };
+      repository.create.mockResolvedValue(makeTask({ userId }));
+
+      await service.create(createTaskDto);
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+      expect(repository.create).toHaveBeenCalledWith(createTaskDto);
+    });
+
+    it('throws BadRequestException when userId does not reference an existing user', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.create({
+          title: 'Assigned task',
+          status: TaskStatus.enum.OPEN,
+          userId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {
@@ -198,6 +277,54 @@ describe('TasksService', () => {
       await expect(
         service.update(randomUUID(), { title: 'Anything' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('does not call usersService.findById when userId is omitted from the update', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+
+      await service.update(task.id, { title: 'New title' });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalled();
+    });
+
+    it('does not call usersService.findById when userId is explicitly set to null (unassigning)', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+      const updateTaskDto = { userId: null };
+
+      await service.update(task.id, updateTaskDto);
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalledWith(task.id, updateTaskDto);
+    });
+
+    it('validates the userId exists before updating when userId is provided', async () => {
+      const userId = randomUUID();
+      const task = makeTask({ userId });
+      usersService.findById.mockResolvedValue({
+        id: userId,
+        name: 'Assignee',
+        email: 'assignee@example.com',
+        createdAt: new Date(),
+      });
+      repository.update.mockResolvedValue(task);
+
+      await service.update(task.id, { userId });
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+      expect(repository.update).toHaveBeenCalledWith(task.id, { userId });
+    });
+
+    it('throws BadRequestException when updating to a userId that does not reference an existing user', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(service.update(randomUUID(), { userId })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(repository.update).not.toHaveBeenCalled();
     });
   });
 

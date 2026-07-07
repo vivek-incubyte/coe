@@ -17,6 +17,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   description: 'Sample task',
   status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
+  userId: null,
   ...overrides,
 });
 
@@ -99,6 +100,26 @@ describe('TasksController', () => {
 
       expect(mockTasksService.findAll).toHaveBeenCalledWith(pagination);
     });
+
+    it('maps a task with an assigned userId to a response dto with a matching userId', async () => {
+      const userId = randomUUID();
+      const task = makeTask({ userId });
+      mockTasksService.findAll.mockResolvedValue([task]);
+
+      const [dto] = await controller.findAll(defaultPagination);
+
+      expect(dto.userId).toBe(userId);
+    });
+
+    it('maps a task with a null userId to a response dto with userId explicitly null', async () => {
+      const task = makeTask({ userId: null });
+      mockTasksService.findAll.mockResolvedValue([task]);
+
+      const [dto] = await controller.findAll(defaultPagination);
+
+      expect(dto.userId).toBeNull();
+      expect('userId' in dto).toBe(true);
+    });
   });
 
   describe('findOne', () => {
@@ -130,6 +151,16 @@ describe('TasksController', () => {
       await expect(controller.findOne(randomUUID())).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('returns a response dto whose userId matches the task userId', async () => {
+      const userId = randomUUID();
+      const task = makeTask({ userId });
+      mockTasksService.findOne.mockResolvedValue(task);
+
+      const dto = await controller.findOne(task.id);
+
+      expect(dto.userId).toBe(userId);
     });
   });
 
@@ -172,6 +203,35 @@ describe('TasksController', () => {
       });
 
       expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
+    });
+
+    it('passes a createTaskDto containing userId through to the service unchanged', async () => {
+      const userId = randomUUID();
+      mockTasksService.create.mockResolvedValue(makeTask({ userId }));
+      const createTaskDto = {
+        title: 'Write tests',
+        description: 'Cover the create endpoint',
+        status: TaskStatus.enum.OPEN,
+        userId,
+      };
+
+      await controller.create(createTaskDto);
+
+      expect(mockTasksService.create).toHaveBeenCalledWith(createTaskDto);
+    });
+
+    it('returns the mapped response dto including the userId the service returns', async () => {
+      const userId = randomUUID();
+      const createdTask = makeTask({ userId });
+      mockTasksService.create.mockResolvedValue(createdTask);
+
+      const dto = await controller.create({
+        title: createdTask.title,
+        status: TaskStatus.enum.OPEN,
+        userId,
+      });
+
+      expect(dto.userId).toBe(userId);
     });
   });
 
@@ -237,6 +297,29 @@ describe('TasksController', () => {
       await expect(
         controller.update(randomUUID(), { title: 'Anything' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('passes an updateTaskDto containing userId: null through to the service unchanged', async () => {
+      const task = makeTask();
+      mockTasksService.update.mockResolvedValue(makeTask({ userId: null }));
+      const updateTaskDto = { userId: null };
+
+      await controller.update(task.id, updateTaskDto);
+
+      expect(mockTasksService.update).toHaveBeenCalledWith(
+        task.id,
+        updateTaskDto,
+      );
+    });
+
+    it('returns the mapped response dto reflecting the userId the service returns', async () => {
+      const userId = randomUUID();
+      const updatedTask = makeTask({ userId });
+      mockTasksService.update.mockResolvedValue(updatedTask);
+
+      const dto = await controller.update(updatedTask.id, { userId });
+
+      expect(dto.userId).toBe(userId);
     });
   });
 

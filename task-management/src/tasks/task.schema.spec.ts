@@ -3,6 +3,7 @@ import {
   CreateTaskSchema,
   PaginationQuerySchema,
   TaskIdParamSchema,
+  TaskSchema,
   TaskStatus,
   UpdateTaskSchema,
 } from './task.schema';
@@ -242,6 +243,39 @@ describe('CreateTaskSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('accepts a request without userId, leaving it undefined', () => {
+    const result = CreateTaskSchema.parse({ title: 'Write tests' });
+
+    expect(result.userId).toBeUndefined();
+  });
+
+  it('accepts a request with a valid uuid userId', () => {
+    const result = CreateTaskSchema.parse({
+      title: 'Write tests',
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+
+    expect(result.userId).toBe('123e4567-e89b-12d3-a456-426614174000');
+  });
+
+  it('accepts a request with userId explicitly set to null', () => {
+    const result = CreateTaskSchema.parse({
+      title: 'Write tests',
+      userId: null,
+    });
+
+    expect(result.userId).toBeNull();
+  });
+
+  it('rejects a request where userId is not a valid uuid', () => {
+    const result = CreateTaskSchema.safeParse({
+      title: 'Write tests',
+      userId: 'not-a-uuid',
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('UpdateTaskSchema', () => {
@@ -327,5 +361,64 @@ describe('UpdateTaskSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('accepts an update payload with only userId set to a valid uuid', () => {
+    const result = UpdateTaskSchema.parse({
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+
+    expect(result).toEqual({
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+  });
+
+  it('accepts an update payload with userId set to null, unassigning it', () => {
+    const result = UpdateTaskSchema.parse({ userId: null });
+
+    expect(result).toEqual({ userId: null });
+  });
+
+  it('rejects an update payload where userId is not a valid uuid', () => {
+    const result = UpdateTaskSchema.safeParse({ userId: 'not-a-uuid' });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('TaskSchema', () => {
+  it('rejects a task with userId omitted entirely', () => {
+    const result = TaskSchema.safeParse({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      title: 'Write tests',
+      status: TaskStatus.enum.OPEN,
+      createdAt: new Date(),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a task with userId set to null', () => {
+    const result = TaskSchema.safeParse({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      title: 'Write tests',
+      status: TaskStatus.enum.OPEN,
+      createdAt: new Date(),
+      userId: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a task with userId set to a valid uuid', () => {
+    const result = TaskSchema.safeParse({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      title: 'Write tests',
+      status: TaskStatus.enum.OPEN,
+      createdAt: new Date(),
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+
+    expect(result.success).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '../infra/database/schema';
-import { TABLE_TASKS } from '../infra/database/schema';
+import { TABLE_TASKS, TABLE_USERS } from '../infra/database/schema';
 import { TaskStatus } from './task.schema';
 import { TasksRepository } from './tasks.repository';
 
@@ -14,6 +14,14 @@ const MALFORMED_ID = 'not-a-uuid';
 let sql: ReturnType<typeof postgres>;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repo: TasksRepository;
+
+async function createTestUser(overrides: { name?: string; email: string }) {
+  const [row] = await db
+    .insert(TABLE_USERS)
+    .values({ name: overrides.name ?? 'Test user', email: overrides.email })
+    .returning();
+  return row;
+}
 
 beforeAll(async () => {
   const url = process.env.TEST_DATABASE_URL;
@@ -29,6 +37,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(TABLE_TASKS);
+  await db.delete(TABLE_USERS);
 });
 
 afterAll(async () => {
@@ -159,6 +168,33 @@ describe('create', () => {
     const rows = await db.select().from(TABLE_TASKS);
     expect(rows).toHaveLength(0);
   });
+
+  it('persists null for userId when none is provided (unassigned)', async () => {
+    const task = await repo.create({ title: 'Unassigned task' });
+
+    const [row] = await db.select().from(TABLE_TASKS);
+    expect(row.userId).toBeNull();
+    expect(task.userId).toBeNull();
+  });
+
+  it('persists a valid userId when provided, referencing an existing user', async () => {
+    const user = await createTestUser({ email: 'owner@example.com' });
+
+    const task = await repo.create({
+      title: 'Assigned task',
+      userId: user.id,
+    });
+
+    const [row] = await db.select().from(TABLE_TASKS);
+    expect(row.userId).toBe(user.id);
+    expect(task.userId).toBe(user.id);
+  });
+
+  it('throws when userId references a user that does not exist (FK violation)', async () => {
+    await expect(
+      repo.create({ title: 'Bad owner', userId: NON_EXISTENT_ID }),
+    ).rejects.toThrow();
+  });
 });
 
 describe('findById', () => {
@@ -210,6 +246,26 @@ describe('findById', () => {
   // E — Exception: malformed id is rejected at the DB level
   it('throws when the id is not a valid uuid', async () => {
     await expect(repo.findById(MALFORMED_ID)).rejects.toThrow();
+  });
+
+  it('returns a task with userId included in the round trip', async () => {
+    const user = await createTestUser({ email: 'assignee@example.com' });
+    const created = await repo.create({
+      title: 'Assigned round trip',
+      userId: user.id,
+    });
+
+    const result = await repo.findById(created.id);
+
+    expect(result?.userId).toBe(user.id);
+  });
+
+  it('returns a task with userId null when created unassigned', async () => {
+    const created = await repo.create({ title: 'Unassigned round trip' });
+
+    const result = await repo.findById(created.id);
+
+    expect(result?.userId).toBeNull();
   });
 });
 
@@ -711,6 +767,50 @@ describe('update', () => {
     await expect(
       repo.update(MALFORMED_ID, { title: 'Anything' }),
     ).rejects.toThrow();
+  });
+
+  it("updates a task's userId to a new user", async () => {
+    const created = await repo.create({ title: 'Unassigned' });
+    const user = await createTestUser({ email: 'new-owner@example.com' });
+
+    const result = await repo.update(created.id, { userId: user.id });
+
+    expect(result?.userId).toBe(user.id);
+  });
+
+  it("updates a task's userId to null, unassigning it", async () => {
+    const user = await createTestUser({ email: 'former-owner@example.com' });
+    const created = await repo.create({
+      title: 'Assigned',
+      userId: user.id,
+    });
+
+    const result = await repo.update(created.id, { userId: null });
+
+    expect(result?.userId).toBeNull();
+  });
+
+  it('throws when updating userId to a user that does not exist (FK violation)', async () => {
+    const created = await repo.create({ title: 'Valid task' });
+
+    await expect(
+      repo.update(created.id, { userId: NON_EXISTENT_ID }),
+    ).rejects.toThrow();
+  });
+});
+
+describe('userId FK — cascade behavior on user deletion', () => {
+  it('unassigns a task (sets userId to null) when the assigned user is deleted', async () => {
+    const user = await createTestUser({ email: 'to-be-deleted@example.com' });
+    const created = await repo.create({
+      title: 'Assigned to a user who will be deleted',
+      userId: user.id,
+    });
+
+    await db.delete(TABLE_USERS).where(eq(TABLE_USERS.id, user.id));
+
+    const result = await repo.findById(created.id);
+    expect(result?.userId).toBeNull();
   });
 });
 

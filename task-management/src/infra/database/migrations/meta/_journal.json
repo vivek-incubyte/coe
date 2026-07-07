@@ -8,6 +8,20 @@
       "when": 1782892174156,
       "tag": "0000_wealthy_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783414657364,
+      "tag": "0001_handy_dreadnoughts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783416471909,
+      "tag": "0002_flaky_the_leader",
+      "breakpoints": true
     }
   ]
 }

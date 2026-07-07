@@ -11,6 +11,7 @@ export type CreateTaskInput = {
   title: string;
   description?: string;
   status?: TaskStatus;
+  userId?: string | null;
 };
 
 export type UpdateTaskInput = Partial<CreateTaskInput>;
@@ -26,6 +27,7 @@ export class TasksRepository {
         title: input.title,
         description: input.description,
         status: input.status,
+        userId: input.userId,
       })
       .returning();
     return this.toTask(row)!;
@@ -106,6 +108,7 @@ export class TasksRepository {
       description: task.description ?? undefined,
       status: task.status,
       createdAt: task.createdAt,
+      userId: task.userId,
     };
   }
 }
