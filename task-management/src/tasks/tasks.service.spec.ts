@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ZodError } from 'zod';
-import { TasksService } from './tasks.service';
-import { Task, TaskSchema, TaskStatus } from './task.schema';
 import { randomUUID } from 'node:crypto';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Task, TaskStatus } from './task.schema';
+import { TasksRepository } from './tasks.repository';
+import { TasksService } from './tasks.service';
+import { UsersService } from '../users/users.service';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
@@ -10,113 +12,354 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   description: 'A description',
   status: TaskStatus.enum.OPEN,
   createdAt: new Date(),
+  userId: null,
   ...overrides,
 });
 
+type MockTasksRepository = {
+  findAll: ReturnType<typeof vi.fn>;
+  findById: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+};
+
+const makeMockRepository = (): MockTasksRepository => ({
+  findAll: vi.fn(),
+  findById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+});
+
+type MockUsersService = {
+  create: ReturnType<typeof vi.fn>;
+  findAll: ReturnType<typeof vi.fn>;
+  findById: ReturnType<typeof vi.fn>;
+};
+
+const makeMockUsersService = (): MockUsersService => ({
+  create: vi.fn(),
+  findAll: vi.fn(),
+  findById: vi.fn(),
+});
+
 describe('TasksService', () => {
+  let repository: MockTasksRepository;
+  let usersService: MockUsersService;
   let service: TasksService;
 
   beforeEach(() => {
-    service = new TasksService();
+    repository = makeMockRepository();
+    usersService = makeMockUsersService();
+    service = new TasksService(
+      repository as unknown as TasksRepository,
+      usersService as unknown as UsersService,
+    );
   });
 
-  // Z — Zero: store is empty
-  it('returns an empty array on a freshly created service', () => {
-    expect(service.findAll()).toEqual([]);
-  });
+  describe('findAll', () => {
+    it('returns an empty array when the repository has no tasks', async () => {
+      repository.findAll.mockResolvedValue([]);
 
-  it('returns an empty array on every call when no task has been added', () => {
-    service.findAll();
-    service.findAll();
-    expect(service.findAll()).toEqual([]);
-  });
+      const result = await service.findAll({ limit: 10, offset: 0 });
 
-  // O — One: exactly one task in the store
-  it('returns a single-element array when one task has been added', () => {
-    service.addTask(makeTask());
+      expect(result).toEqual([]);
+    });
 
-    expect(service.findAll()).toHaveLength(1);
-  });
+    it('returns the single task the repository resolves', async () => {
+      const task = makeTask();
+      repository.findAll.mockResolvedValue([task]);
 
-  it('returns the stored task with every field preserved exactly', () => {
-    const task = makeTask({ description: 'detailed description' });
-    service.addTask(task);
+      const result = await service.findAll({ limit: 10, offset: 0 });
 
-    const [result] = service.findAll();
+      expect(result).toEqual([task]);
+    });
 
-    expect(result.id).toBe(task.id);
-    expect(result.title).toBe(task.title);
-    expect(result.description).toBe(task.description);
-    expect(result.status).toBe(task.status);
-    expect(result.createdAt).toEqual(task.createdAt);
-  });
+    it('returns every task the repository resolves, unchanged', async () => {
+      const tasks = [makeTask(), makeTask(), makeTask()];
+      repository.findAll.mockResolvedValue(tasks);
 
-  // M — Many: multiple tasks in the store
-  it('returns all tasks when multiple tasks have been added', () => {
-    const tasks = [makeTask(), makeTask(), makeTask()];
-    tasks.forEach((t) => service.addTask(t));
+      const result = await service.findAll({ limit: 10, offset: 0 });
 
-    expect(service.findAll()).toHaveLength(3);
-  });
+      expect(result).toEqual(tasks);
+    });
 
-  it('returns tasks in the order they were inserted', () => {
-    const tasks = [
-      makeTask({ title: 'First' }),
-      makeTask({ title: 'Second' }),
-      makeTask({ title: 'Third' }),
-    ];
-    tasks.forEach((t) => service.addTask(t));
+    it('passes the pagination params through to the repository unchanged', async () => {
+      repository.findAll.mockResolvedValue([]);
+      const pagination = { limit: 5, offset: 10 };
 
-    const result = service.findAll();
+      await service.findAll(pagination);
 
-    tasks.forEach((r, i) => expect(r.id).toBe(result[i].id));
-  });
+      expect(repository.findAll).toHaveBeenCalledWith(pagination);
+    });
 
-  // B — Boundary: edge values of individual fields
-  it('preserves undefined description without coercing it to null or an empty string', () => {
-    service.addTask(makeTask({ description: undefined }));
+    it('delegates limit/offset enforcement to the repository rather than slicing in-memory', async () => {
+      const tasks = [makeTask(), makeTask(), makeTask()];
+      repository.findAll.mockResolvedValue(tasks);
 
-    expect(service.findAll()[0].description).toBeUndefined();
-  });
+      const result = await service.findAll({ limit: 2, offset: 0 });
 
-  it('returns tasks with each valid status value unchanged', () => {
-    const statuses = [
-      TaskStatus.enum.OPEN,
-      TaskStatus.enum.IN_PROGRESS,
-      TaskStatus.enum.DONE,
-    ] as const;
-    statuses.forEach((status) => service.addTask(makeTask({ status })));
-
-    const result = service.findAll();
-
-    statuses.forEach((status, i) => expect(result[i].status).toBe(status));
-  });
-
-  // I — Interface: shape of what findAll returns
-  it('each returned task satisfies the TaskSchema contract', () => {
-    service.addTask(makeTask());
-
-    service.findAll().forEach((task) => {
-      expect(TaskSchema.safeParse(task).success).toBe(true);
+      expect(result).toBe(tasks);
     });
   });
 
-  it('returns a new array reference on every call', () => {
-    service.addTask(makeTask());
+  describe('findOne', () => {
+    it('returns the task when the repository finds a match', async () => {
+      const task = makeTask();
+      repository.findById.mockResolvedValue(task);
 
-    expect(service.findAll()).not.toBe(service.findAll());
+      const result = await service.findOne(task.id);
+
+      expect(result).toEqual(task);
+    });
+
+    it('passes the given id through to the repository', async () => {
+      const id = randomUUID();
+      repository.findById.mockResolvedValue(makeTask({ id }));
+
+      await service.findOne(id);
+
+      expect(repository.findById).toHaveBeenCalledWith(id);
+    });
+
+    it('throws NotFoundException when the repository finds no match', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.findOne(randomUUID())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 
-  // E — Exception: invalid data in the store surfaces at read time
-  it('throws a ZodError when a stored task has a malformed id', () => {
-    (service as any).tasks = [{ ...makeTask(), id: 'not-a-uuid' }];
+  describe('create', () => {
+    it('resolves with the task the repository returns, including its generated id and createdAt', async () => {
+      const createdTask = makeTask();
+      repository.create.mockResolvedValue(createdTask);
 
-    expect(() => service.findAll()).toThrow(ZodError);
+      const result = await service.create({
+        title: createdTask.title,
+        status: TaskStatus.enum.OPEN,
+      });
+
+      expect(result).toEqual(createdTask);
+      expect(result.id).toBe(createdTask.id);
+      expect(result.createdAt).toBe(createdTask.createdAt);
+    });
+
+    it('passes the createTaskDto through to the repository unchanged', async () => {
+      repository.create.mockResolvedValue(makeTask());
+      const createTaskDto = {
+        title: 'Ship the feature',
+        description: 'Wire it end to end',
+        status: TaskStatus.enum.IN_PROGRESS,
+      };
+
+      await service.create(createTaskDto);
+
+      expect(repository.create).toHaveBeenCalledWith(createTaskDto);
+    });
+
+    it('makes a newly created task immediately retrievable via findOne against the same repository', async () => {
+      const createdTask = makeTask();
+      repository.create.mockResolvedValue(createdTask);
+      repository.findById.mockResolvedValue(createdTask);
+
+      const created = await service.create({
+        title: createdTask.title,
+        status: createdTask.status,
+      });
+      const fetched = await service.findOne(created.id);
+
+      expect(fetched).toEqual(created);
+      expect(repository.findById).toHaveBeenCalledWith(created.id);
+    });
+
+    it('does not call usersService.findById when userId is omitted', async () => {
+      repository.create.mockResolvedValue(makeTask());
+
+      await service.create({
+        title: 'No user assigned',
+        status: TaskStatus.enum.OPEN,
+      });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.create).toHaveBeenCalled();
+    });
+
+    it('does not call usersService.findById when userId is explicitly null', async () => {
+      repository.create.mockResolvedValue(makeTask());
+
+      await service.create({
+        title: 'No user assigned',
+        status: TaskStatus.enum.OPEN,
+        userId: null,
+      });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.create).toHaveBeenCalled();
+    });
+
+    it('validates the userId exists before creating when userId is provided', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue({
+        id: userId,
+        name: 'Assignee',
+        email: 'assignee@example.com',
+        createdAt: new Date(),
+      });
+      const createTaskDto = {
+        title: 'Assigned task',
+        status: TaskStatus.enum.OPEN,
+        userId,
+      };
+      repository.create.mockResolvedValue(makeTask({ userId }));
+
+      await service.create(createTaskDto);
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+      expect(repository.create).toHaveBeenCalledWith(createTaskDto);
+    });
+
+    it('throws BadRequestException when userId does not reference an existing user', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.create({
+          title: 'Assigned task',
+          status: TaskStatus.enum.OPEN,
+          userId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
   });
 
-  it('throws a ZodError when a stored task has an invalid status', () => {
-    (service as any).tasks = [{ ...makeTask(), status: 'INVALID_STATUS' }];
+  describe('update', () => {
+    it('returns the updated task the repository resolves', async () => {
+      const updatedTask = makeTask({ title: 'Updated title' });
+      repository.update.mockResolvedValue(updatedTask);
 
-    expect(() => service.findAll()).toThrow(ZodError);
+      const result = await service.update(updatedTask.id, {
+        title: 'Updated title',
+      });
+
+      expect(result).toEqual(updatedTask);
+    });
+
+    it('passes the id and updateTaskDto through to the repository unchanged', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+      const updateTaskDto = {
+        title: 'New title',
+        status: TaskStatus.enum.DONE,
+      };
+
+      await service.update(task.id, updateTaskDto);
+
+      expect(repository.update).toHaveBeenCalledWith(task.id, updateTaskDto);
+    });
+
+    it('resolves with the unchanged task when given an empty update body', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+
+      const result = await service.update(task.id, {});
+
+      expect(result).toEqual(task);
+      expect(repository.update).toHaveBeenCalledWith(task.id, {});
+    });
+
+    it('throws NotFoundException when the repository finds no match to update', async () => {
+      repository.update.mockResolvedValue(null);
+
+      await expect(
+        service.update(randomUUID(), { title: 'Anything' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('does not call usersService.findById when userId is omitted from the update', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+
+      await service.update(task.id, { title: 'New title' });
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalled();
+    });
+
+    it('does not call usersService.findById when userId is explicitly set to null (unassigning)', async () => {
+      const task = makeTask();
+      repository.update.mockResolvedValue(task);
+      const updateTaskDto = { userId: null };
+
+      await service.update(task.id, updateTaskDto);
+
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalledWith(task.id, updateTaskDto);
+    });
+
+    it('validates the userId exists before updating when userId is provided', async () => {
+      const userId = randomUUID();
+      const task = makeTask({ userId });
+      usersService.findById.mockResolvedValue({
+        id: userId,
+        name: 'Assignee',
+        email: 'assignee@example.com',
+        createdAt: new Date(),
+      });
+      repository.update.mockResolvedValue(task);
+
+      await service.update(task.id, { userId });
+
+      expect(usersService.findById).toHaveBeenCalledWith(userId);
+      expect(repository.update).toHaveBeenCalledWith(task.id, { userId });
+    });
+
+    it('throws BadRequestException when updating to a userId that does not reference an existing user', async () => {
+      const userId = randomUUID();
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(service.update(randomUUID(), { userId })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('resolves without a value when the repository deletes the task', async () => {
+      repository.delete.mockResolvedValue(true);
+
+      await expect(service.remove(randomUUID())).resolves.toBeUndefined();
+    });
+
+    it('passes the given id through to the repository', async () => {
+      const id = randomUUID();
+      repository.delete.mockResolvedValue(true);
+
+      await service.remove(id);
+
+      expect(repository.delete).toHaveBeenCalledWith(id);
+    });
+
+    it('throws NotFoundException when the repository finds no match to delete', async () => {
+      repository.delete.mockResolvedValue(false);
+
+      await expect(service.remove(randomUUID())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('makes a deleted task unretrievable via findOne against the same repository', async () => {
+      const task = makeTask();
+      repository.delete.mockResolvedValue(true);
+      repository.findById.mockResolvedValue(null);
+
+      await service.remove(task.id);
+
+      await expect(service.findOne(task.id)).rejects.toThrow(NotFoundException);
+    });
   });
 });

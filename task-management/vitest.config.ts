@@ -7,6 +7,11 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
+    // Repository integration tests share one real Postgres DB and truncate
+    // tables in beforeEach; running files in parallel races across the
+    // tasks<->users FK (e.g. a users truncate cascades userId to null on a
+    // task another file is mid-assertion on).
+    fileParallelism: false,
   },
   plugins: [
     swc.vite({

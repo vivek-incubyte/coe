@@ -9,6 +9,7 @@ export const TaskSchema = z.object({
   description: z.string().optional(),
   status: TaskStatus,
   createdAt: z.date(),
+  userId: z.uuid().nullable(),
 });
 export type Task = z.infer<typeof TaskSchema>;
 
@@ -18,5 +19,34 @@ export const TaskResponseSchema = z.object({
   description: z.string().optional(),
   status: TaskStatus,
   createdAt: z.iso.datetime(),
+  userId: z.uuid().nullable(),
 });
 export type TaskResponseDto = z.infer<typeof TaskResponseSchema>;
+
+export const TaskIdParamSchema = z.uuid();
+
+export const PaginationQuerySchema = z.object({
+  search: z.string().trim().min(1).max(200).optional(),
+  status: TaskStatus.optional(),
+  limit: z.coerce.number().int().nonnegative().default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
+
+export const CreateTaskSchema = z.strictObject({
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  status: TaskStatus.default(TaskStatus.enum.OPEN),
+  userId: z.uuid().nullable().optional(),
+});
+export type CreateTaskDto = z.infer<typeof CreateTaskSchema>;
+
+export const UpdateTaskSchema = z
+  .strictObject({
+    title: z.string().min(1).max(200),
+    description: z.string().max(2000),
+    status: TaskStatus,
+    userId: z.uuid().nullable(),
+  })
+  .partial();
+export type UpdateTaskDto = z.infer<typeof UpdateTaskSchema>;
