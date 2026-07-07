@@ -1,13 +1,13 @@
 ---
-feature: "Task Status Filter"
-size: "SMALL"
-risk: "LOW"
+feature: "Users and Task Assignee Mapping"
+size: "FEATURE"
+risk: "MODERATE"
 discovery: "not done"
 design_brief: ""
 boundaries: ""
 current_phase: "done — shipped"
-phase_spec: "not yet written"
-architecture: "not yet decided"
+phase_spec: "docs/specs/users-and-task-assignee-mapping-spec.md — confirmed"
+architecture: "Simple/Layered — Users mirrors Tasks; TasksService->UsersService cross-module validation"
 tdd_plan: "not yet written"
 current_slice: ""
 ---
@@ -15,11 +15,11 @@ current_slice: ""
 # Bee State
 
 ## Feature
-Task Status Filter
+Users and Task Assignee Mapping
 
 ## Triage
-Size: SMALL
-Risk: LOW
+Size: FEATURE
+Risk: MODERATE
 
 ## Discovery
 not done
@@ -28,10 +28,10 @@ not done
 done — shipped
 
 ## Phase Spec
-not yet written
+docs/specs/users-and-task-assignee-mapping-spec.md — confirmed
 
 ## Architecture
-not yet decided
+Simple/Layered — Users mirrors Tasks; TasksService->UsersService cross-module validation
 
 ## Current Slice
 
@@ -43,4 +43,5 @@ not yet written
 n/a
 
 ## Slice Progress
-
+Slice 1: done
+Slice 2: done
