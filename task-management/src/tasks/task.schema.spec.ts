@@ -85,6 +85,44 @@ describe('PaginationQuerySchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('accepts a status and includes it in the parsed result', () => {
+    const result = PaginationQuerySchema.parse({
+      status: TaskStatus.enum.OPEN,
+    });
+
+    expect(result).toEqual({
+      status: TaskStatus.enum.OPEN,
+      limit: 20,
+      offset: 0,
+    });
+  });
+
+  it('status omitted defaults to undefined', () => {
+    const result = PaginationQuerySchema.parse({});
+
+    expect(result).toEqual({ status: undefined, limit: 20, offset: 0 });
+  });
+
+  it('rejects a status value outside OPEN, IN_PROGRESS, DONE', () => {
+    const result = PaginationQuerySchema.safeParse({ status: 'CANCELLED' });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts both search and status together', () => {
+    const result = PaginationQuerySchema.parse({
+      search: 'urgent',
+      status: TaskStatus.enum.DONE,
+    });
+
+    expect(result).toEqual({
+      search: 'urgent',
+      status: TaskStatus.enum.DONE,
+      limit: 20,
+      offset: 0,
+    });
+  });
 });
 
 describe('TaskIdParamSchema', () => {

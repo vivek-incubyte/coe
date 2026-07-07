@@ -1,11 +1,11 @@
 ---
-feature: "Task Search"
+feature: "Task Status Filter"
 size: "SMALL"
 risk: "LOW"
 discovery: "not done"
 design_brief: ""
 boundaries: ""
-current_phase: "triaged"
+current_phase: "done — shipped"
 phase_spec: "not yet written"
 architecture: "not yet decided"
 tdd_plan: "not yet written"
@@ -15,7 +15,7 @@ current_slice: ""
 # Bee State
 
 ## Feature
-Task Search
+Task Status Filter
 
 ## Triage
 Size: SMALL
@@ -25,7 +25,7 @@ Risk: LOW
 not done
 
 ## Current Phase
-triaged
+done — shipped
 
 ## Phase Spec
 not yet written

@@ -25,6 +25,7 @@ export const TaskIdParamSchema = z.uuid();
 
 export const PaginationQuerySchema = z.object({
   search: z.string().trim().min(1).max(200).optional(),
+  status: TaskStatus.optional(),
   limit: z.coerce.number().int().nonnegative().default(20),
   offset: z.coerce.number().int().nonnegative().default(0),
 });

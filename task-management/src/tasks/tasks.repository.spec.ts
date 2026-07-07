@@ -462,6 +462,159 @@ describe('findAll with search', () => {
   });
 });
 
+describe('findAll with status filter', () => {
+  it('returns an empty array when no task has the given status', async () => {
+    await repo.create({ title: 'Open task', status: TaskStatus.enum.OPEN });
+
+    const result = await repo.findAll({
+      status: TaskStatus.enum.DONE,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns the task matching the given status', async () => {
+    const match = await repo.create({
+      title: 'In progress task',
+      status: TaskStatus.enum.IN_PROGRESS,
+    });
+    await repo.create({ title: 'Open task', status: TaskStatus.enum.OPEN });
+
+    const result = await repo.findAll({
+      status: TaskStatus.enum.IN_PROGRESS,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(match.id);
+  });
+
+  it('returns every task matching the given status, not just the first', async () => {
+    await repo.create({ title: 'Done A', status: TaskStatus.enum.DONE });
+    await repo.create({ title: 'Done B', status: TaskStatus.enum.DONE });
+    await repo.create({ title: 'Open C', status: TaskStatus.enum.OPEN });
+
+    const result = await repo.findAll({
+      status: TaskStatus.enum.DONE,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result.map((t) => t.title).sort()).toEqual(['Done A', 'Done B']);
+  });
+
+  it('returns every task when status is not provided', async () => {
+    await repo.create({ title: 'Open task', status: TaskStatus.enum.OPEN });
+    await repo.create({ title: 'Done task', status: TaskStatus.enum.DONE });
+
+    const result = await repo.findAll({ limit: 20, offset: 0 });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('applies the status filter before pagination limit/offset', async () => {
+    await repo.create({ title: 'Done A', status: TaskStatus.enum.DONE });
+    await repo.create({ title: 'Done B', status: TaskStatus.enum.DONE });
+    await repo.create({ title: 'Open C', status: TaskStatus.enum.OPEN });
+
+    const result = await repo.findAll({
+      status: TaskStatus.enum.DONE,
+      limit: 1,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Done A');
+  });
+});
+
+describe('findAll with status and search combined', () => {
+  it('returns the task that matches both status and search', async () => {
+    const match = await repo.create({
+      title: 'Fix urgent bug',
+      status: TaskStatus.enum.OPEN,
+    });
+    await repo.create({
+      title: 'Fix urgent bug',
+      status: TaskStatus.enum.DONE,
+    });
+    await repo.create({
+      title: 'Write documentation',
+      status: TaskStatus.enum.OPEN,
+    });
+
+    const result = await repo.findAll({
+      search: 'urgent',
+      status: TaskStatus.enum.OPEN,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(match.id);
+  });
+
+  it('excludes a task that matches status but not search', async () => {
+    await repo.create({
+      title: 'Write documentation',
+      status: TaskStatus.enum.OPEN,
+    });
+
+    const result = await repo.findAll({
+      search: 'urgent',
+      status: TaskStatus.enum.OPEN,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('excludes a task that matches search but not status', async () => {
+    await repo.create({
+      title: 'Fix urgent bug',
+      status: TaskStatus.enum.DONE,
+    });
+
+    const result = await repo.findAll({
+      search: 'urgent',
+      status: TaskStatus.enum.OPEN,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns every task matching both filters, not just the first', async () => {
+    await repo.create({
+      title: 'Fix urgent bug in API',
+      status: TaskStatus.enum.OPEN,
+    });
+    await repo.create({
+      title: 'Fix urgent bug in worker',
+      status: TaskStatus.enum.OPEN,
+    });
+    await repo.create({
+      title: 'Fix urgent bug elsewhere',
+      status: TaskStatus.enum.DONE,
+    });
+
+    const result = await repo.findAll({
+      search: 'urgent',
+      status: TaskStatus.enum.OPEN,
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toHaveLength(2);
+  });
+});
+
 describe('update', () => {
   // Z — Zero: nothing to update
   it('returns null when the table has no rows at all', async () => {
