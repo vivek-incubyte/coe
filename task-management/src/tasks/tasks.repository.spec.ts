@@ -15,10 +15,18 @@ let sql: ReturnType<typeof postgres>;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let repo: TasksRepository;
 
-async function createTestUser(overrides: { name?: string; email: string }) {
+async function createTestUser(overrides: {
+  name?: string;
+  email: string;
+  password?: string;
+}) {
   const [row] = await db
     .insert(TABLE_USERS)
-    .values({ name: overrides.name ?? 'Test user', email: overrides.email })
+    .values({
+      name: overrides.name ?? 'Test user',
+      email: overrides.email,
+      password: overrides.password ?? 'DummyPassword',
+    })
     .returning();
   return row;
 }
