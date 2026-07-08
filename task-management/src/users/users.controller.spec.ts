@@ -11,6 +11,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   name: 'Test user',
   email: 'test.user@example.com',
   createdAt: new Date(),
+  password: 'DummyPassword',
   ...overrides,
 });
 
@@ -85,6 +86,7 @@ describe('UsersController', () => {
       const createUserDto: CreateUserDto = {
         name: 'Ada Lovelace',
         email: 'ada@example.com',
+        password: 'DummyPassword',
       };
 
       await controller.create(createUserDto);
@@ -100,6 +102,7 @@ describe('UsersController', () => {
       mockUsersService.create.mockResolvedValue(createdUser);
 
       const dto = await controller.create({
+        password: 'DummyPassword',
         name: createdUser.name,
         email: createdUser.email,
       });
@@ -115,6 +118,7 @@ describe('UsersController', () => {
       mockUsersService.create.mockResolvedValue(createdUser);
 
       const dto = await controller.create({
+        password: 'DummyPassword',
         name: createdUser.name,
         email: createdUser.email,
       });
@@ -128,7 +132,11 @@ describe('UsersController', () => {
       );
 
       await expect(
-        controller.create({ name: 'Dup user', email: 'dup@example.com' }),
+        controller.create({
+          password: 'DummyPassword',
+          name: 'Dup user',
+          email: 'dup@example.com',
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });

@@ -9,6 +9,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   id: randomUUID(),
   name: 'Test user',
   email: 'test.user@example.com',
+  password: 'DummyPassword',
   createdAt: new Date(),
   ...overrides,
 });
@@ -42,6 +43,7 @@ describe('UsersService', () => {
       const result = await service.create({
         name: createdUser.name,
         email: createdUser.email,
+        password: createdUser.password,
       });
 
       expect(result).toEqual(createdUser);
@@ -54,6 +56,7 @@ describe('UsersService', () => {
       const createUserDto: CreateUserDto = {
         name: 'Jane Doe',
         email: 'jane.doe@example.com',
+        password: 'DummyPassword',
       };
 
       await service.create(createUserDto);
@@ -65,10 +68,18 @@ describe('UsersService', () => {
       repository.create.mockRejectedValue({ code: '23505' });
 
       await expect(
-        service.create({ name: 'Jane Doe', email: 'jane.doe@example.com' }),
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
       ).rejects.toThrow(ConflictException);
       await expect(
-        service.create({ name: 'Jane Doe', email: 'jane.doe@example.com' }),
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
       ).rejects.toThrow(/already registered/i);
     });
 
@@ -77,7 +88,11 @@ describe('UsersService', () => {
       repository.create.mockRejectedValue(dbError);
 
       await expect(
-        service.create({ name: 'Jane Doe', email: 'jane.doe@example.com' }),
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
       ).rejects.toBe(dbError);
     });
   });

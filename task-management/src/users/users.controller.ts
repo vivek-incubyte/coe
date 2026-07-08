@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CreateUserSchema } from './user.schema';
-import type { CreateUserDto, User, UserResponseDto } from './user.schema';
+import type { CreateUserDto, PublicUser, UserResponseDto } from './user.schema';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -22,7 +22,7 @@ export class UsersController {
     return this.toResponseDto(user);
   }
 
-  private toResponseDto(user: User): UserResponseDto {
+  private toResponseDto(user: PublicUser): UserResponseDto {
     return {
       ...user,
       createdAt: user.createdAt.toISOString(),

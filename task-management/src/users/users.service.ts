@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { CreateUserDto, User } from './user.schema';
+import { CreateUserDto, PublicUser } from './user.schema';
 import { UsersRepository } from './users.repository';
 
 const UNIQUE_VIOLATION_CODE = '23505';
@@ -8,7 +8,7 @@ const UNIQUE_VIOLATION_CODE = '23505';
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<PublicUser> {
     try {
       return await this.usersRepository.create(createUserDto);
     } catch (error) {
@@ -21,11 +21,11 @@ export class UsersService {
     }
   }
 
-  async findAll(): Promise<User[]> {
+  async findAll(): Promise<PublicUser[]> {
     return this.usersRepository.findAll();
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<PublicUser | null> {
     return this.usersRepository.findById(id);
   }
 
