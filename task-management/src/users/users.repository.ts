@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
   DATABASE_CONNECTION,
   type Database,
 } from '../infra/database/database.module';
 import { TABLE_USERS } from '../infra/database/schema';
-import type { PublicUser } from './user.schema';
+import type { PublicUser, User } from './user.schema';
 
 export type CreateUserInput = {
   name: string;
@@ -40,6 +40,30 @@ export class UsersRepository {
       .from(TABLE_USERS)
       .where(eq(TABLE_USERS.id, id));
     return this.toUser(user);
+  }
+
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    const [user] = await this.db
+      .select()
+      .from(TABLE_USERS)
+      .where(sql`lower(${TABLE_USERS.email}) = lower(${email})`);
+    return this.toUserWithPassword(user);
+  }
+
+  private toUserWithPassword(
+    user: typeof TABLE_USERS.$inferSelect | undefined,
+  ): User | null {
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      password: user.password,
+      createdAt: user.createdAt,
+    };
   }
 
   private toUser(

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import * as bcrypt from 'bcrypt';
 import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CreateUserDto, User } from './user.schema';
-import { UsersRepository } from './users.repository';
+import { CreateUserDto, PublicUser, User } from './user.schema';
+import { CreateUserInput, UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
 
 const makeUser = (overrides: Partial<User> = {}): User => ({
@@ -15,15 +16,23 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
 });
 
 type MockUsersRepository = {
-  create: ReturnType<typeof vi.fn>;
-  findAll: ReturnType<typeof vi.fn>;
-  findById: ReturnType<typeof vi.fn>;
+  create: ReturnType<
+    typeof vi.fn<(input: CreateUserInput) => Promise<PublicUser>>
+  >;
+  findAll: ReturnType<typeof vi.fn<() => Promise<PublicUser[]>>>;
+  findById: ReturnType<
+    typeof vi.fn<(id: string) => Promise<PublicUser | null>>
+  >;
+  findByEmailWithPassword: ReturnType<
+    typeof vi.fn<(email: string) => Promise<User | null>>
+  >;
 };
 
 const makeMockRepository = (): MockUsersRepository => ({
   create: vi.fn(),
   findAll: vi.fn(),
   findById: vi.fn(),
+  findByEmailWithPassword: vi.fn(),
 });
 
 describe('UsersService', () => {
@@ -51,7 +60,7 @@ describe('UsersService', () => {
       expect(result.createdAt).toBe(createdUser.createdAt);
     });
 
-    it('passes the createUserDto through to the repository unchanged', async () => {
+    it('passes the name and email unchanged but hashes the password before calling the repository', async () => {
       repository.create.mockResolvedValue(makeUser());
       const createUserDto: CreateUserDto = {
         name: 'Jane Doe',
@@ -61,7 +70,50 @@ describe('UsersService', () => {
 
       await service.create(createUserDto);
 
-      expect(repository.create).toHaveBeenCalledWith(createUserDto);
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: createUserDto.name,
+          email: createUserDto.email,
+        }),
+      );
+      const [passedArg] = repository.create.mock.calls[0];
+      expect(passedArg.password).not.toBe(createUserDto.password);
+    });
+
+    it('stores a bcrypt hash that verifies against the original plaintext password', async () => {
+      repository.create.mockResolvedValue(makeUser());
+      const plainPassword = 'DummyPassword';
+
+      await service.create({
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        password: plainPassword,
+      });
+
+      const [passedArg] = repository.create.mock.calls[0];
+      const isMatch = await bcrypt.compare(plainPassword, passedArg.password);
+      expect(isMatch).toBe(true);
+    });
+
+    it('hashes the same plaintext password differently across separate registrations', async () => {
+      repository.create.mockResolvedValue(makeUser());
+      const plainPassword = 'DummyPassword';
+
+      await service.create({
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        password: plainPassword,
+      });
+      const [firstArg] = repository.create.mock.calls[0];
+
+      await service.create({
+        name: 'John Roe',
+        email: 'john.roe@example.com',
+        password: plainPassword,
+      });
+      const [secondArg] = repository.create.mock.calls[1];
+
+      expect(firstArg.password).not.toBe(secondArg.password);
     });
 
     it('throws ConflictException mentioning the email when the repository rejects with a unique-violation error', async () => {
@@ -148,6 +200,36 @@ describe('UsersService', () => {
       repository.findById.mockResolvedValue(null);
 
       const result = await service.findById(randomUUID());
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findByEmailWithPassword', () => {
+    it('returns the user the repository resolves, including the password', async () => {
+      const user = makeUser();
+      repository.findByEmailWithPassword.mockResolvedValue(user);
+
+      const result = await service.findByEmailWithPassword(user.email);
+
+      expect(result).toEqual(user);
+    });
+
+    it('passes the given email through to the repository', async () => {
+      const email = 'jane.doe@example.com';
+      repository.findByEmailWithPassword.mockResolvedValue(makeUser({ email }));
+
+      await service.findByEmailWithPassword(email);
+
+      expect(repository.findByEmailWithPassword).toHaveBeenCalledWith(email);
+    });
+
+    it('returns null without throwing when the repository finds no match', async () => {
+      repository.findByEmailWithPassword.mockResolvedValue(null);
+
+      const result = await service.findByEmailWithPassword(
+        'missing@example.com',
+      );
 
       expect(result).toBeNull();
     });

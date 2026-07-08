@@ -8,7 +8,11 @@ import {
   Patch,
   Post,
   Query,
+  UseFilters,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
+import { ForbiddenToUnauthorizedFilter } from '../common/filters/forbidden-to-unauthorized.filter';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TasksService } from './tasks.service';
 import {
@@ -26,6 +30,8 @@ import type {
 } from './task.schema';
 
 @Controller('tasks')
+@UseGuards(AuthGuard)
+@UseFilters(ForbiddenToUnauthorizedFilter)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 

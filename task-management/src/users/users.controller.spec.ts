@@ -1,8 +1,18 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CreateUserDto, User, UserResponseDto } from './user.schema';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { User, UserResponseDto } from './user.schema';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -16,7 +26,6 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
 });
 
 const mockUsersService = {
-  create: vi.fn(),
   findAll: vi.fn(),
 };
 
@@ -79,65 +88,29 @@ describe('UsersController', () => {
       expect(result[1].createdAt).toBe('2024-02-01T00:00:00.000Z');
     });
   });
+});
 
-  describe('create', () => {
-    it('passes the createUserDto through to the service unchanged', async () => {
-      mockUsersService.create.mockResolvedValue(makeUser());
-      const createUserDto: CreateUserDto = {
-        name: 'Ada Lovelace',
-        email: 'ada@example.com',
-        password: 'DummyPassword',
-      };
+describe('UsersController (HTTP)', () => {
+  let app: INestApplication<App>;
 
-      await controller.create(createUserDto);
+  beforeAll(async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      controllers: [UsersController],
+      providers: [{ provide: UsersService, useValue: mockUsersService }],
+    }).compile();
 
-      expect(mockUsersService.create).toHaveBeenCalledWith(createUserDto);
-    });
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
 
-    it('returns the mapped response dto with the id, name, and email the service returns', async () => {
-      const createdUser = makeUser({
-        name: 'Ada Lovelace',
-        email: 'ada@example.com',
-      });
-      mockUsersService.create.mockResolvedValue(createdUser);
+  afterAll(async () => {
+    await app.close();
+  });
 
-      const dto = await controller.create({
-        password: 'DummyPassword',
-        name: createdUser.name,
-        email: createdUser.email,
-      });
-
-      expect(dto.id).toBe(createdUser.id);
-      expect(dto.name).toBe(createdUser.name);
-      expect(dto.email).toBe(createdUser.email);
-    });
-
-    it('converts createdAt to an ISO string in the response', async () => {
-      const fixedDate = new Date('2024-06-15T12:00:00.000Z');
-      const createdUser = makeUser({ createdAt: fixedDate });
-      mockUsersService.create.mockResolvedValue(createdUser);
-
-      const dto = await controller.create({
-        password: 'DummyPassword',
-        name: createdUser.name,
-        email: createdUser.email,
-      });
-
-      expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
-    });
-
-    it('propagates the ConflictException the service throws', async () => {
-      mockUsersService.create.mockRejectedValue(
-        new ConflictException('A user with this email is already registered'),
-      );
-
-      await expect(
-        controller.create({
-          password: 'DummyPassword',
-          name: 'Dup user',
-          email: 'dup@example.com',
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
+  it('responds 404 for POST /users since user creation moved to /auth/register', async () => {
+    await request(app.getHttpServer())
+      .post('/users')
+      .send({ name: 'Ada Lovelace', email: 'ada@example.com' })
+      .expect(404);
   });
 });

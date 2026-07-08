@@ -393,3 +393,75 @@ describe('findAll', () => {
     expect(result.some((u) => u.id === created.id)).toBe(true);
   });
 });
+
+describe('findByEmailWithPassword', () => {
+  it('returns null when no user exists with that email', async () => {
+    const result = await repo.findByEmailWithPassword('missing@example.com');
+    expect(result).toBeNull();
+  });
+
+  it('returns the full user including the password field when exactly one match exists', async () => {
+    await repo.create({
+      name: 'Login Candidate',
+      email: 'logincandidate@example.com',
+      password: 'DummyPassword',
+    });
+
+    const result = await repo.findByEmailWithPassword(
+      'logincandidate@example.com',
+    );
+
+    expect(result?.email).toBe('logincandidate@example.com');
+    expect(result?.password).toBe('DummyPassword');
+  });
+
+  it('finds a user by email regardless of case', async () => {
+    await repo.create({
+      name: 'Case Insensitive',
+      email: 'Foo@x.com',
+      password: 'DummyPassword',
+    });
+
+    const result = await repo.findByEmailWithPassword('foo@x.com');
+
+    expect(result?.email).toBe('Foo@x.com');
+  });
+
+  it('returns the correct user when multiple users exist', async () => {
+    await repo.create({
+      name: 'First',
+      email: 'first@example.com',
+      password: 'FirstPassword',
+    });
+    const target = await repo.create({
+      name: 'Target',
+      email: 'target@example.com',
+      password: 'TargetPassword',
+    });
+    await repo.create({
+      name: 'Third',
+      email: 'third@example.com',
+      password: 'ThirdPassword',
+    });
+
+    const result = await repo.findByEmailWithPassword('target@example.com');
+
+    expect(result?.id).toBe(target.id);
+    expect(result?.password).toBe('TargetPassword');
+  });
+
+  it('returns a password field that is a non-empty string, unlike findById', async () => {
+    await repo.create({
+      name: 'Password Sanity Check',
+      email: 'passwordsanity@example.com',
+      password: 'DummyPassword',
+    });
+
+    const result = await repo.findByEmailWithPassword(
+      'passwordsanity@example.com',
+    );
+
+    expect(typeof result?.password).toBe('string');
+    expect(result?.password.length).toBeGreaterThan(0);
+  });
+});

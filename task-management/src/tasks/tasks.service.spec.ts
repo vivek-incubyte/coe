@@ -94,6 +94,7 @@ describe('TasksService', () => {
       expect(repository.findAll).toHaveBeenCalledWith(pagination);
     });
 
+    //  TODO: Skip
     it('delegates limit/offset enforcement to the repository rather than slicing in-memory', async () => {
       const tasks = [makeTask(), makeTask(), makeTask()];
       repository.findAll.mockResolvedValue(tasks);

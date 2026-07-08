@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthGuard } from '../auth/auth.guard';
 import {
   PaginationQuery,
   Task,
@@ -40,7 +41,10 @@ describe('TasksController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TasksController],
       providers: [{ provide: TasksService, useValue: mockTasksService }],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<TasksController>(TasksController);
   });

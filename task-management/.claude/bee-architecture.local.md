@@ -1,22 +1,48 @@
-## Architecture Recommendation — Users + Task Assignee Mapping
+## Architecture Recommendation — User Authentication
 
-**Pattern**: Simple/Layered (unchanged) — Controller → Service → Repository → Drizzle connection, replicated for Users exactly as it exists for Tasks. No ports/interfaces; single concrete repository implementation per module.
+**Pattern**: Simple/Layered (Controller -> Service -> Repository -> Drizzle), confirmed — same pattern as src/tasks and src/users. No change.
 
-**Cross-module decision (developer-confirmed): Option 1 — Service-to-service.**
-TasksModule imports UsersModule; UsersModule exports UsersService; TasksService injects UsersService and calls findById/exists before create/update when userId is provided, throwing BadRequestException if not found. DB-level FK (onDelete: 'set null') stays in place as a data-integrity backstop, not the primary validation path. Crosses the module boundary at the Service layer (matches "NotFoundException/BadRequestException thrown from service layer, not repository" convention). Dependency direction: TasksModule → UsersModule, TasksService → UsersService, one-way, matching the FK's data direction (tasks.userId → users.id). Users must never import from or know about Tasks.
+**Start with**: AuthModule as a peer feature-folder to users/tasks, identical internal shape (controller/service/schema, no repository — AuthService delegates persistence to UsersService, owns no data of its own).
 
 **File structure**:
-- src/users/user.schema.ts — CreateUserSchema (z.strictObject), User domain type, response schema with z.iso.datetime() for createdAt (mirrors task.schema.ts).
-- src/users/users.repository.ts — injects DATABASE_CONNECTION; create, findAll, and findById (needed by Tasks' existence check in slice 2, not speculative).
-- src/users/users.service.ts — thin orchestration; exposes findById/exists for cross-module use in addition to create/findAll.
-- src/users/users.module.ts — providers: [UsersService, UsersRepository], exports: [UsersService] (this export is the whole boundary-crossing mechanism). UsersRepository stays private to the module.
-- src/infra/database/schema/users.schema.ts — pgTable('users', ...) with a case-insensitive unique constraint on email (functional index on lowercased email), re-exported via the schema barrel.
-- Modified for slice 2: src/tasks/task.schema.ts (add nullable userId), src/tasks/tasks.repository.ts (map userId in toTask, accept in CreateTaskInput/UpdateTaskInput), src/infra/database/schema/tasks.schema.ts (FK column with onDelete: 'set null'), src/tasks/tasks.module.ts (imports: [UsersModule]), src/tasks/tasks.service.ts (inject UsersService, validate userId before delegating to repository, throw BadRequestException if not found), src/app.module.ts (register UsersModule).
+```
+src/auth/
+  auth.module.ts          (new)
+  auth.controller.ts      (new) + auth.controller.spec.ts
+  auth.service.ts         (new) + auth.service.spec.ts
+  auth.schema.ts          (new — RegisterSchema/LoginSchema, z.strictObject, 3-schema shape)
+  auth.guard.ts           (existing — unchanged, do not touch)
+  auth.guard.spec.ts      (existing — unchanged, 7 passing tests)
+```
+Modified in existing folders:
+```
+src/users/users.service.ts       — hash password in create(); add findByEmailWithPassword()
+src/users/users.repository.ts    — add query for email lookup (no shape change to create())
+src/users/users.controller.ts    — remove POST /users; GET /users untouched
+src/tasks/tasks.module.ts        — imports: [UsersModule, AuthModule]
+src/tasks/tasks.controller.ts    — @UseGuards(AuthGuard) at class level
+src/tasks/tasks.controller.spec.ts — overrideGuard(AuthGuard) so existing tests keep passing
+src/app.module.ts                — register AuthModule
+.env / .env.example              — add JWT_SECRET
+```
 
-**Evolution Triggers**:
-- Delete-user endpoint added later → check-then-write in TasksService becomes a real race condition; add a transaction or FK-violation catch as secondary defense then, not now.
-- A third module needs to reference Users → extract a shared "assert user exists" helper at the third occurrence (DRY), not now.
-- Users needs update/delete or richer rules (e.g. "assignee must be active") → those rules belong inside UsersService; no restructuring needed since Tasks already calls through the Service, not the Repository.
-- Task-user relationship grows past a single nullable FK (many-to-many, roles, assignment history) → extract a dedicated assignment entity/repository.
+**Dependency graph** (verified, no cycle): TasksModule -> AuthModule -> UsersModule; TasksModule -> UsersModule directly too (harmless duplicate, Nest modules are singletons). UsersModule never imports AuthModule or TasksModule. AuthModule never imports TasksModule. No forwardRef needed.
 
-**Slice Order**: No reorder needed. Slice 1 (Users: create + list) is a prerequisite for Slice 2 (Task-user mapping); each slice is independently releasable.
+`AuthModule` provides + exports `AuthGuard`. `TasksModule` imports `AuthModule` to make `AuthGuard` resolvable in its DI scope for `@UseGuards(AuthGuard)` — `TasksModule` does NOT need to separately import `JwtModule`; NestJS resolves `AuthGuard`'s own deps (`JwtService`, `UsersService`) within `AuthModule`'s own container.
+
+**Key boundaries**:
+- `AuthGuard` contract frozen (7 existing tests) — only its wiring changes, never its constructor/behavior.
+- `JwtModule.registerAsync` (reading `ConfigService.getOrThrow<string>('JWT_SECRET')`) lives inside `AuthModule` only — mirrors `DatabaseModule`'s fail-fast `getOrThrow` pattern.
+- `UsersService` is sole owner of password data (hashing on write via bcrypt, hash-inclusive read via new `findByEmailWithPassword`). `AuthService` never touches `UsersRepository` directly or does its own hashing/persistence — composes `UsersService` + `bcrypt.compare` + `JwtService.sign`.
+- No interface/port abstraction for hashing or JWT signing — single concrete implementation of each, no foreseeable swap (YAGNI).
+
+**Dependency direction**: TasksModule -> AuthModule -> UsersModule (one-way). AuthController -> AuthService -> UsersService (one-way, same layering as Tasks/Users).
+
+## Evolution Triggers
+- Second credential-lookup consumer beyond AuthService -> keep findByEmailWithPassword on UsersService, don't extract a repository interface yet; only extract if a second *data source* appears.
+- Roles/permissions added later -> extend JWT payload and AuthGuard then; don't pre-build a permissions layer now.
+- Second auth strategy (e.g. OAuth) -> that's when a passport strategy abstraction becomes warranted; today passport-jwt alone doesn't need one.
+- UsersService accumulating both task-management and auth concerns beyond hashing-on-write/email lookup -> reconsider a dedicated sub-module, but not before it visibly happens.
+
+## Slice Order
+No reorder needed. Slice 1 (register + hashing) -> Slice 2 (login, depends on hashing) -> Slice 3 (guard protection, depends on real token) already dependency-correct.
