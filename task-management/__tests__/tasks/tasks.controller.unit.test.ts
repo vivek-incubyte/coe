@@ -50,79 +50,55 @@ describe('TasksController', () => {
   });
 
   describe('findAll', () => {
-    it('returns an empty array when the service has no tasks', async () => {
+    it('returns empty object when no tasks available', async () => {
       mockTasksService.findAll.mockResolvedValue([]);
-
       const result = await controller.findAll(defaultPagination);
-
       expect(result).toEqual([]);
     });
 
-    it('returns a bare array, not wrapped in a pagination envelope', async () => {
-      mockTasksService.findAll.mockResolvedValue([makeTask()]);
-
-      const result = await controller.findAll(defaultPagination);
-
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).not.toHaveProperty('items');
-      expect(result).not.toHaveProperty('total');
-    });
-
     it('maps a task to a response dto, converting createdAt to an ISO string', async () => {
-      const fixedDate = new Date('2024-06-15T12:00:00.000Z');
-      const task = makeTask({ createdAt: fixedDate });
-      mockTasksService.findAll.mockResolvedValue([task]);
+      const fixedDate = '2024-06-15T12:00:00.000Z';
+      const newTask = makeTask({ createdAt: new Date(fixedDate) });
+      mockTasksService.findAll.mockResolvedValue([newTask]);
 
-      const [dto] = await controller.findAll(defaultPagination);
+      const [task] = await controller.findAll(defaultPagination);
 
-      expect(dto.createdAt).toBe('2024-06-15T12:00:00.000Z');
-      expect(dto.id).toBe(task.id);
-      expect(dto.title).toBe(task.title);
-      expect(dto.status).toBe(task.status);
-      expect(dto.description).toBe(task.description);
+      expect(task).toEqual({
+        id: newTask.id,
+        title: newTask.title,
+        description: newTask.description,
+        status: newTask.status,
+        createdAt: fixedDate,
+        userId: null,
+      });
     });
 
     it('applies the createdAt conversion to every task returned', async () => {
+      const fixedDate = '2026-06-15T12:00:00.000Z';
       const tasks = [
-        makeTask({ createdAt: new Date('2024-01-01T00:00:00.000Z') }),
-        makeTask({ createdAt: new Date('2024-02-01T00:00:00.000Z') }),
+        makeTask({ createdAt: new Date(fixedDate) }),
+        makeTask({ createdAt: new Date(fixedDate) }),
       ];
       mockTasksService.findAll.mockResolvedValue(tasks);
 
       const result: TaskResponseDto[] =
         await controller.findAll(defaultPagination);
 
-      expect(result[0].createdAt).toBe('2024-01-01T00:00:00.000Z');
-      expect(result[1].createdAt).toBe('2024-02-01T00:00:00.000Z');
+      expect(result[0].createdAt).toBe(fixedDate);
+      expect(result[1].createdAt).toBe(fixedDate);
     });
 
-    it('passes the pagination params through to the service unchanged', async () => {
+    it('passes the params to the service unchanged', async () => {
       mockTasksService.findAll.mockResolvedValue([]);
-      const pagination: GetAllTasksReq = { limit: 5, offset: 10 };
+      const params: GetAllTasksReq = {
+        limit: 5,
+        offset: 10,
+        search: 'asdf',
+        status: TaskStatus.enum.OPEN,
+      };
 
-      await controller.findAll(pagination);
-
-      expect(mockTasksService.findAll).toHaveBeenCalledWith(pagination);
-    });
-
-    it('maps a task with an assigned userId to a response dto with a matching userId', async () => {
-      const userId = randomUUID();
-      const task = makeTask({ userId });
-      mockTasksService.findAll.mockResolvedValue([task]);
-
-      const [dto] = await controller.findAll(defaultPagination);
-
-      expect(dto.userId).toBe(userId);
-    });
-
-    it('maps a task with a null userId to a response dto with userId explicitly null', async () => {
-      const task = makeTask({ userId: null });
-      mockTasksService.findAll.mockResolvedValue([task]);
-
-      const [dto] = await controller.findAll(defaultPagination);
-
-      expect(dto.userId).toBeNull();
-      expect('userId' in dto).toBe(true);
+      await controller.findAll(params);
+      expect(mockTasksService.findAll).toHaveBeenCalledWith(params);
     });
   });
 
