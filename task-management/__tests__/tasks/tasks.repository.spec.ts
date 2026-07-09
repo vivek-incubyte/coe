@@ -3,10 +3,10 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../infra/database/schema';
-import { TABLE_TASKS, TABLE_USERS } from '../infra/database/schema';
-import { TaskStatus } from './task.schema';
-import { TasksRepository } from './tasks.repository';
+import * as schema from '../../src/infra/database/schema';
+import { TABLE_TASKS, TABLE_USERS } from '../../src/infra/database/schema';
+import { TaskStatus } from '../../src/tasks/task.schema';
+import { TasksRepository } from '../../src/tasks/tasks.repository';
 
 const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
 const MALFORMED_ID = 'not-a-uuid';

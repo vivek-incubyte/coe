@@ -3,9 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, it, vi } from 'vitest';
-import { PublicUser } from '../users/user.schema';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { PublicUser } from '../../src/users/user.schema';
+import { AuthController } from '../../src/auth/auth.controller';
+import { AuthService } from '../../src/auth/auth.service';
 
 const makePublicUser = (overrides: Partial<PublicUser> = {}): PublicUser => ({
   id: 'a1a1a1a1-b2b2-c3c3-d4d4-e5e5e5e5e5e5',

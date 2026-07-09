@@ -1,7 +1,7 @@
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AuthToken } from './auth.guard';
+import { AuthToken } from '../../src/auth/auth.guard';
 
 type DecodedToken = AuthToken & { exp: number; iat: number };
 

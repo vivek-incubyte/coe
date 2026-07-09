@@ -3,9 +3,9 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../infra/database/schema';
-import { TABLE_USERS } from '../infra/database/schema';
-import { UsersRepository } from './users.repository';
+import * as schema from '../../src/infra/database/schema';
+import { TABLE_USERS } from '../../src/infra/database/schema';
+import { UsersRepository } from '../../src/users/users.repository';
 
 const NON_EXISTENT_ID = '00000000-0000-0000-0000-000000000000';
 const MALFORMED_ID = 'not-a-uuid';

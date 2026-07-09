@@ -3,8 +3,8 @@ import type { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthGuard } from './auth.guard';
-import { UsersService } from '../users/users.service';
+import { AuthGuard } from '../../src/auth/auth.guard';
+import { UsersService } from '../../src/users/users.service';
 
 const mockJwtService = {
   verifyAsync: vi.fn(),

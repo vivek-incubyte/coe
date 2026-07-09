@@ -2,9 +2,12 @@ import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
 import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CreateUserDto, PublicUser, User } from './user.schema';
-import { CreateUserInput, UsersRepository } from './users.repository';
-import { UsersService } from './users.service';
+import { CreateUserDto, PublicUser, User } from '../../src/users/user.schema';
+import {
+  CreateUserInput,
+  UsersRepository,
+} from '../../src/users/users.repository';
+import { UsersService } from '../../src/users/users.service';
 
 const makeUser = (overrides: Partial<User> = {}): User => ({
   id: randomUUID(),
