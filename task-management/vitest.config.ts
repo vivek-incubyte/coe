@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    include: ['__tests__/**/*.spec.ts'],
+    include: ['__tests__/**/*.spec.ts', '__tests__/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
     // Repository integration tests share one real Postgres DB and truncate
