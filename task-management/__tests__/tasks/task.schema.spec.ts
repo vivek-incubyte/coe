@@ -6,7 +6,7 @@ import {
   TaskSchema,
   TaskStatus,
   UpdateTaskSchema,
-} from '../../src/tasks/task.schema';
+} from '@src/tasks/task.schema';
 
 describe('PaginationQuerySchema', () => {
   it('defaults limit to 20 when omitted', () => {

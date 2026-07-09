@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LoginSchema, RegisterSchema } from '../../src/auth/auth.schema';
+import { LoginSchema, RegisterSchema } from '@src/auth/auth.schema';
 
 describe('RegisterSchema', () => {
   it('parses a valid request with name, email and password', () => {

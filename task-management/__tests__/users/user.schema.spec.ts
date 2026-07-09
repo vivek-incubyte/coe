@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CreateUserSchema } from '../../src/users/user.schema';
+import { CreateUserSchema } from '@src/users/user.schema';
 
 describe('CreateUserSchema', () => {
   it('parses a valid request with name, email and password', () => {

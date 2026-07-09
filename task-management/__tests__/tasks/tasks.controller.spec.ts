@@ -2,15 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthGuard } from '../../src/auth/auth.guard';
+import { AuthGuard } from '@src/auth/auth.guard';
 import {
   PaginationQuery,
   Task,
   TaskResponseDto,
   TaskStatus,
-} from '../../src/tasks/task.schema';
-import { TasksController } from '../../src/tasks/tasks.controller';
-import { TasksService } from '../../src/tasks/tasks.service';
+} from '@src/tasks/task.schema';
+import { TasksController } from '@src/tasks/tasks.controller';
+import { TasksService } from '@src/tasks/tasks.service';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),

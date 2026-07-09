@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Task, TaskStatus } from '../../src/tasks/task.schema';
-import { TasksRepository } from '../../src/tasks/tasks.repository';
-import { TasksService } from '../../src/tasks/tasks.service';
-import { UsersService } from '../../src/users/users.service';
+import { Task, TaskStatus } from '@src/tasks/task.schema';
+import { TasksRepository } from '@src/tasks/tasks.repository';
+import { TasksService } from '@src/tasks/tasks.service';
+import { UsersService } from '@src/users/users.service';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),

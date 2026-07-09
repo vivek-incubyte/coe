@@ -4,10 +4,10 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { UsersService } from '../../src/users/users.service';
-import { User } from '../../src/users/user.schema';
-import { AuthService } from '../../src/auth/auth.service';
-import { LoginDto, RegisterDto } from '../../src/auth/auth.schema';
+import { UsersService } from '@src/users/users.service';
+import { User } from '@src/users/user.schema';
+import { AuthService } from '@src/auth/auth.service';
+import { LoginDto, RegisterDto } from '@src/auth/auth.schema';
 
 const mockUsersService = {
   create: vi.fn(),
