@@ -5,7 +5,7 @@ import {
   type Database,
 } from '../infra/database/database.module';
 import { TABLE_TASKS } from '../infra/database/schema';
-import type { Task, TaskStatus, PaginationQuery } from './task.schema';
+import type { Task, TaskStatus, GetAllTasksReq } from './task.schema';
 
 export type CreateTaskInput = {
   title: string;
@@ -33,7 +33,7 @@ export class TasksRepository {
     return this.toTask(row)!;
   }
 
-  async findAll(pagination: PaginationQuery): Promise<Task[]> {
+  async findAll(pagination: GetAllTasksReq): Promise<Task[]> {
     const searchFilter = this.buildSearchFilter(pagination.search);
     const statusFilter = this.buildStatusFilter(pagination.status);
 

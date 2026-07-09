@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   CreateTaskDto,
-  PaginationQuery,
+  GetAllTasksReq,
   Task,
   UpdateTaskDto,
 } from './task.schema';
@@ -19,7 +19,7 @@ export class TasksService {
     private readonly usersService: UsersService,
   ) {}
 
-  async findAll(pagination: PaginationQuery): Promise<Task[]> {
+  async findAll(pagination: GetAllTasksReq): Promise<Task[]> {
     return this.tasksRepository.findAll(pagination);
   }
 

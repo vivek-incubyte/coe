@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthGuard } from '@src/auth/auth.guard';
 import {
-  PaginationQuery,
+  GetAllTasksReq,
   Task,
   TaskResponseDto,
   TaskStatus,
@@ -22,7 +22,7 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   ...overrides,
 });
 
-const defaultPagination: PaginationQuery = { limit: 20, offset: 0 };
+const defaultPagination: GetAllTasksReq = { limit: 20, offset: 0 };
 
 const mockTasksService = {
   findAll: vi.fn(),
@@ -98,7 +98,7 @@ describe('TasksController', () => {
 
     it('passes the pagination params through to the service unchanged', async () => {
       mockTasksService.findAll.mockResolvedValue([]);
-      const pagination: PaginationQuery = { limit: 5, offset: 10 };
+      const pagination: GetAllTasksReq = { limit: 5, offset: 10 };
 
       await controller.findAll(pagination);
 

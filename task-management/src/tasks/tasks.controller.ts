@@ -17,13 +17,13 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TasksService } from './tasks.service';
 import {
   CreateTaskSchema,
-  PaginationQuerySchema,
+  GetAllTasksReq,
   TaskIdParamSchema,
   UpdateTaskSchema,
 } from './task.schema';
 import type {
   CreateTaskDto,
-  PaginationQuery,
+  GetAllTasksReq,
   Task,
   TaskResponseDto,
   UpdateTaskDto,
@@ -37,8 +37,8 @@ export class TasksController {
 
   @Get()
   async findAll(
-    @Query(new ZodValidationPipe(PaginationQuerySchema))
-    pagination: PaginationQuery,
+    @Query(new ZodValidationPipe(GetAllTasksReq))
+    pagination: GetAllTasksReq,
   ): Promise<TaskResponseDto[]> {
     const tasks = await this.tasksService.findAll(pagination);
     return tasks.map((task) => this.toResponseDto(task));
