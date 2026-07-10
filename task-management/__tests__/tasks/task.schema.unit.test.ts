@@ -3,6 +3,7 @@ import {
   CreateTaskSchema,
   GetAllTasksReq,
   TaskIdParamSchema,
+  TaskResponseSchema,
   TaskSchema,
   TaskStatus,
   UpdateTaskSchema,
@@ -429,6 +430,72 @@ describe('UpdateTaskSchema', () => {
 
   it('rejects an update payload where userId is not a valid uuid', () => {
     const result = UpdateTaskSchema.safeParse({ userId: 'not-a-uuid' });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('TaskResponseSchema', () => {
+  const validResponse = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    title: 'Write tests',
+    status: TaskStatus.enum.OPEN,
+    createdAt: new Date().toISOString(),
+    userId: null,
+  };
+
+  it('accepts a fully valid response', () => {
+    const result = TaskResponseSchema.safeParse(validResponse);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a title longer than a single character', () => {
+    const result = TaskResponseSchema.safeParse({
+      ...validResponse,
+      title: 'Write tests',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a response with no id field', () => {
+    const { id, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no title field', () => {
+    const { title, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no status field', () => {
+    const { status, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no createdAt field', () => {
+    const { createdAt, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects createdAt that is not an ISO datetime string', () => {
+    const result = TaskResponseSchema.safeParse({
+      ...validResponse,
+      createdAt: 'not-a-date',
+    });
 
     expect(result.success).toBe(false);
   });

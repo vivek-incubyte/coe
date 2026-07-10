@@ -23,7 +23,6 @@ import {
 } from './task.schema';
 import type {
   CreateTaskDto,
-  GetAllTasksReq,
   Task,
   TaskResponseDto,
   UpdateTaskDto,

@@ -55,6 +55,19 @@ describe('AuthGuard', () => {
       });
       const result = await guard.canActivate(context);
       expect(result).toBe(false);
+      expect(mockJwtService.verifyAsync).not.toHaveBeenCalled();
+    });
+
+    it('denies the request when the decoded token is falsy', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(null);
+
+      const context = makeExecutionContext({
+        authorization: `Bearer TempToken`,
+      });
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(false);
+      expect(mockUsersService.findById).not.toHaveBeenCalled();
     });
 
     it('denies the request when jwtService.verifyAsync rejects', async () => {

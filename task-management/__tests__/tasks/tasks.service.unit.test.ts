@@ -58,7 +58,7 @@ describe('TasksService', () => {
     );
   });
 
-  describe.only('findAll', () => {
+  describe('findAll', () => {
     it('calls repository with correct params', async () => {
       repositoryMock.findAll.mockResolvedValue([]);
       await service.findAll({
@@ -121,9 +121,10 @@ describe('TasksService', () => {
 
     it('throws NotFoundException when the repository finds no match', async () => {
       repositoryMock.findById.mockResolvedValue(null);
+      const id = randomUUID();
 
-      await expect(service.findOne(randomUUID())).rejects.toThrow(
-        NotFoundException,
+      await expect(service.findOne(id)).rejects.toThrow(
+        `Task with id ${id} not found`,
       );
     });
   });
@@ -227,7 +228,7 @@ describe('TasksService', () => {
           status: TaskStatus.enum.OPEN,
           userId,
         }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(`User with id ${userId} not found`);
       expect(repositoryMock.create).not.toHaveBeenCalled();
     });
   });
@@ -272,10 +273,11 @@ describe('TasksService', () => {
 
     it('throws NotFoundException when the repository finds no match to update', async () => {
       repositoryMock.update.mockResolvedValue(null);
+      const id = randomUUID();
 
       await expect(
-        service.update(randomUUID(), { title: 'Anything' }),
-      ).rejects.toThrow(NotFoundException);
+        service.update(id, { title: 'Anything' }),
+      ).rejects.toThrow(`Task with id ${id} not found`);
     });
 
     it('does not call usersService.findById when userId is omitted from the update', async () => {
@@ -324,7 +326,7 @@ describe('TasksService', () => {
       usersService.findById.mockResolvedValue(null);
 
       await expect(service.update(randomUUID(), { userId })).rejects.toThrow(
-        BadRequestException,
+        `User with id ${userId} not found`,
       );
       expect(repositoryMock.update).not.toHaveBeenCalled();
     });
@@ -348,9 +350,10 @@ describe('TasksService', () => {
 
     it('throws NotFoundException when the repository finds no match to delete', async () => {
       repositoryMock.delete.mockResolvedValue(false);
+      const id = randomUUID();
 
-      await expect(service.remove(randomUUID())).rejects.toThrow(
-        NotFoundException,
+      await expect(service.remove(id)).rejects.toThrow(
+        `Task with id ${id} not found`,
       );
     });
 

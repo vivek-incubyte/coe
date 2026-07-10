@@ -150,6 +150,43 @@ describe('UsersService', () => {
         }),
       ).rejects.toBe(dbError);
     });
+
+    it('propagates an error object with a non-matching code unchanged', async () => {
+      const dbError = { code: 'OTHER_CODE' };
+      repository.create.mockRejectedValue(dbError);
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBe(dbError);
+    });
+
+    it('propagates a null rejection unchanged', async () => {
+      repository.create.mockRejectedValue(null);
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBeNull();
+    });
+
+    it('propagates a non-object rejection unchanged', async () => {
+      repository.create.mockRejectedValue('boom');
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBe('boom');
+    });
   });
 
   describe('findAll', () => {
