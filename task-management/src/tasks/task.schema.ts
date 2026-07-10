@@ -1,6 +1,12 @@
+import {
+  MAX_SEARCH_LENGTH,
+  PAGINATION_DEFAULT,
+  PAGINATION_MAX,
+} from '@src/config/constants';
+import { taskStatusEnum } from '@src/infra/database/schema';
 import { z } from 'zod';
 
-export const TaskStatus = z.enum(['OPEN', 'IN_PROGRESS', 'DONE']);
+export const TaskStatus = z.enum(taskStatusEnum.enumValues);
 export type TaskStatus = z.infer<typeof TaskStatus>;
 
 export const TaskSchema = z.object({
@@ -25,13 +31,22 @@ export type TaskResponseDto = z.infer<typeof TaskResponseSchema>;
 
 export const TaskIdParamSchema = z.uuid();
 
-export const PaginationQuerySchema = z.object({
-  search: z.string().trim().min(1).max(200).optional(),
-  status: TaskStatus.optional(),
-  limit: z.coerce.number().int().nonnegative().default(20),
+const Pagination = z.strictObject({
+  limit: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(PAGINATION_MAX)
+    .default(PAGINATION_DEFAULT),
   offset: z.coerce.number().int().nonnegative().default(0),
 });
-export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
+
+export const GetAllTasksReq = Pagination.extend({
+  search: z.string().trim().min(1).max(MAX_SEARCH_LENGTH).optional(),
+  status: TaskStatus.optional(),
+});
+
+export type GetAllTasksReq = z.infer<typeof GetAllTasksReq>;
 
 export const CreateTaskSchema = z.strictObject({
   title: z.string().min(1).max(200),

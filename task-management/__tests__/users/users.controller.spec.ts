@@ -12,9 +12,9 @@ import {
   it,
   vi,
 } from 'vitest';
-import { User, UserResponseDto } from './user.schema';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
+import { User, UserResponseDto } from '@src/users/user.schema';
+import { UsersController } from '@src/users/users.controller';
+import { UsersService } from '@src/users/users.service';
 
 const makeUser = (overrides: Partial<User> = {}): User => ({
   id: randomUUID(),

@@ -1,127 +1,176 @@
 import { describe, expect, it } from 'vitest';
 import {
   CreateTaskSchema,
-  PaginationQuerySchema,
+  GetAllTasksReq,
   TaskIdParamSchema,
+  TaskResponseSchema,
   TaskSchema,
   TaskStatus,
   UpdateTaskSchema,
-} from './task.schema';
+} from '@src/tasks/task.schema';
+import {
+  MAX_SEARCH_LENGTH,
+  PAGINATION_DEFAULT,
+  PAGINATION_MAX as PAGINATION_MAX_LIMIT,
+} from '@src/config/constants';
+import { taskStatusEnum } from '@src/infra/database/schema';
 
-describe('PaginationQuerySchema', () => {
-  it('defaults limit to 20 when omitted', () => {
-    const result = PaginationQuerySchema.parse({});
-
-    expect(result.limit).toBe(20);
-  });
-
-  it('defaults offset to 0 when omitted', () => {
-    const result = PaginationQuerySchema.parse({});
-
-    expect(result.offset).toBe(0);
-  });
-
-  it('coerces numeric query string values into numbers', () => {
-    const result = PaginationQuerySchema.parse({ limit: '5', offset: '10' });
-
-    expect(result).toEqual({ limit: 5, offset: 10 });
-  });
-
-  it('accepts zero as a valid limit and offset', () => {
-    const result = PaginationQuerySchema.parse({ limit: '0', offset: '0' });
-
-    expect(result).toEqual({ limit: 0, offset: 0 });
-  });
-
-  it('rejects a negative limit', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: '-1' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a negative offset', () => {
-    const result = PaginationQuerySchema.safeParse({ offset: '-1' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a non-integer limit', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: '1.5' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a non-integer offset', () => {
-    const result = PaginationQuerySchema.safeParse({ offset: '1.5' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a non-numeric limit', () => {
-    const result = PaginationQuerySchema.safeParse({ limit: 'abc' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects a non-numeric offset', () => {
-    const result = PaginationQuerySchema.safeParse({ offset: 'abc' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts a search string and includes it in the parsed result', () => {
-    const result = PaginationQuerySchema.parse({ search: 'urgent' });
-
-    expect(result).toEqual({ search: 'urgent', limit: 20, offset: 0 });
-  });
-
-  it('search omitted defaults to undefined', () => {
-    const result = PaginationQuerySchema.parse({});
-
-    expect(result).toEqual({ search: undefined, limit: 20, offset: 0 });
-  });
-
-  it('rejects an empty or whitespace-only search string', () => {
-    const result = PaginationQuerySchema.safeParse({ search: '   ' });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts a status and includes it in the parsed result', () => {
-    const result = PaginationQuerySchema.parse({
-      status: TaskStatus.enum.OPEN,
-    });
-
+describe('GetAllTasksRequest', () => {
+  it('allows empty params', () => {
+    const result = GetAllTasksReq.parse({});
     expect(result).toEqual({
-      status: TaskStatus.enum.OPEN,
-      limit: 20,
+      limit: PAGINATION_DEFAULT,
       offset: 0,
     });
   });
 
-  it('status omitted defaults to undefined', () => {
-    const result = PaginationQuerySchema.parse({});
-
-    expect(result).toEqual({ status: undefined, limit: 20, offset: 0 });
-  });
-
-  it('rejects a status value outside OPEN, IN_PROGRESS, DONE', () => {
-    const result = PaginationQuerySchema.safeParse({ status: 'CANCELLED' });
+  it('rejects unknown params', () => {
+    const result = GetAllTasksReq.safeParse({
+      unknown: 'property',
+    });
 
     expect(result.success).toBe(false);
   });
 
-  it('accepts both search and status together', () => {
-    const result = PaginationQuerySchema.parse({
-      search: 'urgent',
-      status: TaskStatus.enum.DONE,
+  it('accepts all params', () => {
+    const result = GetAllTasksReq.parse({
+      limit: '10',
+      offset: '5',
+      search: ' urgent ',
+      status: 'DONE',
     });
 
     expect(result).toEqual({
+      limit: 10,
+      offset: 5,
       search: 'urgent',
-      status: TaskStatus.enum.DONE,
-      limit: 20,
-      offset: 0,
+      status: 'DONE',
+    });
+  });
+
+  describe('Limit and Offset', () => {
+    it('converts string limit to integer', () => {
+      const value = '5';
+      const result = GetAllTasksReq.parse({ limit: value });
+      expect(result.limit).toBe(Number.parseInt(value));
+    });
+
+    it('rejects a negative limit', () => {
+      const result = GetAllTasksReq.safeParse({ limit: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-integer limit', () => {
+      const result = GetAllTasksReq.safeParse({ limit: '1.5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-numeric limit', () => {
+      const result = GetAllTasksReq.safeParse({ limit: 'abc' });
+      expect(result.success).toBe(false);
+    });
+
+    it(`rejects limit > ${PAGINATION_MAX_LIMIT}`, () => {
+      const result = GetAllTasksReq.safeParse({
+        limit: PAGINATION_MAX_LIMIT + 1,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it(`accepts limit = ${PAGINATION_MAX_LIMIT}`, () => {
+      const result = GetAllTasksReq.parse({
+        limit: PAGINATION_MAX_LIMIT,
+      });
+      expect(result.limit).toBe(PAGINATION_MAX_LIMIT);
+    });
+
+    it('converts string offset to integer', () => {
+      const value = '5';
+      const result = GetAllTasksReq.parse({ offset: value });
+      expect(result.offset).toBe(Number.parseInt(value));
+    });
+
+    it('rejects a non-integer offset', () => {
+      const result = GetAllTasksReq.safeParse({ offset: '1.5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-numeric offset', () => {
+      const result = GetAllTasksReq.safeParse({ offset: 'abc' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a negative offset', () => {
+      const result = GetAllTasksReq.safeParse({ offset: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts zero as a valid limit and offset', () => {
+      const result = GetAllTasksReq.parse({ limit: '0', offset: '0' });
+      expect(result).toEqual({ limit: 0, offset: 0 });
+    });
+  });
+
+  describe('search', () => {
+    it('does not include search by default', () => {
+      const result = GetAllTasksReq.parse({});
+      expect(result.search).toEqual(undefined);
+    });
+
+    it('accepts a search string and includes it', () => {
+      const searchText = 'urgent';
+      const result = GetAllTasksReq.parse({ search: searchText });
+      expect(result.search).toEqual(searchText);
+    });
+
+    it('rejects an empty search string', () => {
+      const result = GetAllTasksReq.safeParse({ search: '' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects white-space only search string', () => {
+      const result = GetAllTasksReq.safeParse({ search: '  ' });
+      expect(result.success).toBe(false);
+    });
+
+    it('trims space from both ends for search string', () => {
+      const searchText = 'urgent';
+      const result = GetAllTasksReq.parse({ search: `   ${searchText}    ` });
+      expect(result.search).toBe(searchText);
+    });
+
+    it(`rejects search string with length > ${MAX_SEARCH_LENGTH}`, () => {
+      const result = GetAllTasksReq.safeParse({
+        search: 's'.repeat(MAX_SEARCH_LENGTH + 1),
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it(`accepts search string with length = ${MAX_SEARCH_LENGTH}`, () => {
+      const result = GetAllTasksReq.parse({
+        search: 's'.repeat(MAX_SEARCH_LENGTH),
+      });
+      expect(result.search).toHaveLength(MAX_SEARCH_LENGTH);
+    });
+  });
+
+  describe('status', () => {
+    it('does not include status by default', () => {
+      const result = GetAllTasksReq.parse({});
+      expect(result.status).toEqual(undefined);
+    });
+
+    it(`rejects a status value outside ${taskStatusEnum.enumValues.join(',')}`, () => {
+      const result = GetAllTasksReq.safeParse({ status: 'RANDOMVALUE' });
+      expect(result.success).toBe(false);
+    });
+
+    it(`accepts a status in ${taskStatusEnum.enumValues.join(',')}`, () => {
+      const taskStatuses = taskStatusEnum.enumValues;
+      for (const status of taskStatuses) {
+        const result = GetAllTasksReq.parse({ status });
+        expect(result.status).toBe(status);
+      }
     });
   });
 });
@@ -381,6 +430,72 @@ describe('UpdateTaskSchema', () => {
 
   it('rejects an update payload where userId is not a valid uuid', () => {
     const result = UpdateTaskSchema.safeParse({ userId: 'not-a-uuid' });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('TaskResponseSchema', () => {
+  const validResponse = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    title: 'Write tests',
+    status: TaskStatus.enum.OPEN,
+    createdAt: new Date().toISOString(),
+    userId: null,
+  };
+
+  it('accepts a fully valid response', () => {
+    const result = TaskResponseSchema.safeParse(validResponse);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a title longer than a single character', () => {
+    const result = TaskResponseSchema.safeParse({
+      ...validResponse,
+      title: 'Write tests',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a response with no id field', () => {
+    const { id, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no title field', () => {
+    const { title, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no status field', () => {
+    const { status, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no createdAt field', () => {
+    const { createdAt, ...rest } = validResponse;
+
+    const result = TaskResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects createdAt that is not an ISO datetime string', () => {
+    const result = TaskResponseSchema.safeParse({
+      ...validResponse,
+      createdAt: 'not-a-date',
+    });
 
     expect(result.success).toBe(false);
   });

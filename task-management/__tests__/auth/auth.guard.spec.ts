@@ -3,8 +3,8 @@ import type { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthGuard } from './auth.guard';
-import { UsersService } from '../users/users.service';
+import { AuthGuard } from '@src/auth/auth.guard';
+import { UsersService } from '@src/users/users.service';
 
 const mockJwtService = {
   verifyAsync: vi.fn(),
@@ -55,6 +55,19 @@ describe('AuthGuard', () => {
       });
       const result = await guard.canActivate(context);
       expect(result).toBe(false);
+      expect(mockJwtService.verifyAsync).not.toHaveBeenCalled();
+    });
+
+    it('denies the request when the decoded token is falsy', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(null);
+
+      const context = makeExecutionContext({
+        authorization: `Bearer TempToken`,
+      });
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(false);
+      expect(mockUsersService.findById).not.toHaveBeenCalled();
     });
 
     it('denies the request when jwtService.verifyAsync rejects', async () => {

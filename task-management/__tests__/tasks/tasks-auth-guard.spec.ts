@@ -8,9 +8,9 @@ import postgres from 'postgres';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppModule } from '../app.module';
-import * as schema from '../infra/database/schema';
-import { TABLE_TASKS, TABLE_USERS } from '../infra/database/schema';
+import { AppModule } from '@src/app.module';
+import * as schema from '@src/infra/database/schema';
+import { TABLE_TASKS, TABLE_USERS } from '@src/infra/database/schema';
 
 interface AuthResponseBody {
   accessToken: string;

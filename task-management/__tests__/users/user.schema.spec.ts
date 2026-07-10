@@ -1,5 +1,131 @@
 import { describe, expect, it } from 'vitest';
-import { CreateUserSchema } from './user.schema';
+import {
+  CreateUserSchema,
+  UserResponseSchema,
+  UserSchema,
+} from '@src/users/user.schema';
+
+describe('UserSchema', () => {
+  const validUser = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Ada Lovelace',
+    email: 'ada@example.com',
+    password: 'dummyPassword',
+    createdAt: new Date(),
+  };
+
+  it('accepts a fully valid user', () => {
+    const result = UserSchema.safeParse(validUser);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a name longer than a single character', () => {
+    const result = UserSchema.safeParse({
+      ...validUser,
+      name: 'Ada Lovelace',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a user with an empty string name', () => {
+    const result = UserSchema.safeParse({ ...validUser, name: '' });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a user with no id field', () => {
+    const { id, ...rest } = validUser;
+
+    const result = UserSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a user with no email field', () => {
+    const { email, ...rest } = validUser;
+
+    const result = UserSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a user with no password field', () => {
+    const { password, ...rest } = validUser;
+
+    const result = UserSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a user with no createdAt field', () => {
+    const { createdAt, ...rest } = validUser;
+
+    const result = UserSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('UserResponseSchema', () => {
+  const validResponse = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Ada Lovelace',
+    email: 'ada@example.com',
+    createdAt: new Date().toISOString(),
+  };
+
+  it('accepts a fully valid response', () => {
+    const result = UserResponseSchema.safeParse(validResponse);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a name longer than a single character', () => {
+    const result = UserResponseSchema.safeParse({
+      ...validResponse,
+      name: 'Ada Lovelace',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a response with an empty string name', () => {
+    const result = UserResponseSchema.safeParse({
+      ...validResponse,
+      name: '',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a response with no id field', () => {
+    const { id, ...rest } = validResponse;
+
+    const result = UserResponseSchema.safeParse(rest);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('ignores an extra password field since UserResponseSchema is not a strict object', () => {
+    const result = UserResponseSchema.safeParse({
+      ...validResponse,
+      password: 'shouldNotBeHere',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects createdAt that is not an ISO datetime string', () => {
+    const result = UserResponseSchema.safeParse({
+      ...validResponse,
+      createdAt: 'not-a-date',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
 
 describe('CreateUserSchema', () => {
   it('parses a valid request with name, email and password', () => {

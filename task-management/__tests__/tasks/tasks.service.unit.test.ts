@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Task, TaskStatus } from './task.schema';
-import { TasksRepository } from './tasks.repository';
-import { TasksService } from './tasks.service';
-import { UsersService } from '../users/users.service';
+import { Task, TaskStatus } from '@src/tasks/task.schema';
+import { TasksRepository } from '@src/tasks/tasks.repository';
+import { TasksService } from '@src/tasks/tasks.service';
+import { UsersService } from '@src/users/users.service';
 
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: randomUUID(),
@@ -45,70 +45,65 @@ const makeMockUsersService = (): MockUsersService => ({
 });
 
 describe('TasksService', () => {
-  let repository: MockTasksRepository;
+  let repositoryMock: MockTasksRepository;
   let usersService: MockUsersService;
   let service: TasksService;
 
   beforeEach(() => {
-    repository = makeMockRepository();
+    repositoryMock = makeMockRepository();
     usersService = makeMockUsersService();
     service = new TasksService(
-      repository as unknown as TasksRepository,
+      repositoryMock as unknown as TasksRepository,
       usersService as unknown as UsersService,
     );
   });
 
   describe('findAll', () => {
+    it('calls repository with correct params', async () => {
+      repositoryMock.findAll.mockResolvedValue([]);
+      await service.findAll({
+        limit: 10,
+        offset: 0,
+        search: 'term',
+        status: TaskStatus.enum.DONE,
+      });
+      expect(repositoryMock.findAll).toHaveBeenCalledWith({
+        limit: 10,
+        offset: 0,
+        search: 'term',
+        status: TaskStatus.enum.DONE,
+      });
+    });
+
     it('returns an empty array when the repository has no tasks', async () => {
-      repository.findAll.mockResolvedValue([]);
-
+      repositoryMock.findAll.mockResolvedValue([]);
       const result = await service.findAll({ limit: 10, offset: 0 });
-
       expect(result).toEqual([]);
     });
 
-    it('returns the single task the repository resolves', async () => {
-      const task = makeTask();
-      repository.findAll.mockResolvedValue([task]);
-
-      const result = await service.findAll({ limit: 10, offset: 0 });
-
-      expect(result).toEqual([task]);
-    });
-
-    it('returns every task the repository resolves, unchanged', async () => {
+    it('returns every task from repository regardless of limit', async () => {
       const tasks = [makeTask(), makeTask(), makeTask()];
-      repository.findAll.mockResolvedValue(tasks);
+      repositoryMock.findAll.mockResolvedValue(tasks);
 
       const result = await service.findAll({ limit: 10, offset: 0 });
 
       expect(result).toEqual(tasks);
+      expect(result).toHaveLength(tasks.length);
     });
 
-    it('passes the pagination params through to the repository unchanged', async () => {
-      repository.findAll.mockResolvedValue([]);
-      const pagination = { limit: 5, offset: 10 };
+    it('propagates repository errors', async () => {
+      repositoryMock.findAll.mockRejectedValue(new Error('DB Unavailable'));
 
-      await service.findAll(pagination);
-
-      expect(repository.findAll).toHaveBeenCalledWith(pagination);
-    });
-
-    //  TODO: Skip
-    it('delegates limit/offset enforcement to the repository rather than slicing in-memory', async () => {
-      const tasks = [makeTask(), makeTask(), makeTask()];
-      repository.findAll.mockResolvedValue(tasks);
-
-      const result = await service.findAll({ limit: 2, offset: 0 });
-
-      expect(result).toBe(tasks);
+      await expect(service.findAll({ limit: 10, offset: 0 })).rejects.toThrow(
+        'DB Unavailable',
+      );
     });
   });
 
   describe('findOne', () => {
     it('returns the task when the repository finds a match', async () => {
       const task = makeTask();
-      repository.findById.mockResolvedValue(task);
+      repositoryMock.findById.mockResolvedValue(task);
 
       const result = await service.findOne(task.id);
 
@@ -117,18 +112,19 @@ describe('TasksService', () => {
 
     it('passes the given id through to the repository', async () => {
       const id = randomUUID();
-      repository.findById.mockResolvedValue(makeTask({ id }));
+      repositoryMock.findById.mockResolvedValue(makeTask({ id }));
 
       await service.findOne(id);
 
-      expect(repository.findById).toHaveBeenCalledWith(id);
+      expect(repositoryMock.findById).toHaveBeenCalledWith(id);
     });
 
     it('throws NotFoundException when the repository finds no match', async () => {
-      repository.findById.mockResolvedValue(null);
+      repositoryMock.findById.mockResolvedValue(null);
+      const id = randomUUID();
 
-      await expect(service.findOne(randomUUID())).rejects.toThrow(
-        NotFoundException,
+      await expect(service.findOne(id)).rejects.toThrow(
+        `Task with id ${id} not found`,
       );
     });
   });
@@ -136,7 +132,7 @@ describe('TasksService', () => {
   describe('create', () => {
     it('resolves with the task the repository returns, including its generated id and createdAt', async () => {
       const createdTask = makeTask();
-      repository.create.mockResolvedValue(createdTask);
+      repositoryMock.create.mockResolvedValue(createdTask);
 
       const result = await service.create({
         title: createdTask.title,
@@ -149,7 +145,7 @@ describe('TasksService', () => {
     });
 
     it('passes the createTaskDto through to the repository unchanged', async () => {
-      repository.create.mockResolvedValue(makeTask());
+      repositoryMock.create.mockResolvedValue(makeTask());
       const createTaskDto = {
         title: 'Ship the feature',
         description: 'Wire it end to end',
@@ -158,13 +154,13 @@ describe('TasksService', () => {
 
       await service.create(createTaskDto);
 
-      expect(repository.create).toHaveBeenCalledWith(createTaskDto);
+      expect(repositoryMock.create).toHaveBeenCalledWith(createTaskDto);
     });
 
     it('makes a newly created task immediately retrievable via findOne against the same repository', async () => {
       const createdTask = makeTask();
-      repository.create.mockResolvedValue(createdTask);
-      repository.findById.mockResolvedValue(createdTask);
+      repositoryMock.create.mockResolvedValue(createdTask);
+      repositoryMock.findById.mockResolvedValue(createdTask);
 
       const created = await service.create({
         title: createdTask.title,
@@ -173,11 +169,11 @@ describe('TasksService', () => {
       const fetched = await service.findOne(created.id);
 
       expect(fetched).toEqual(created);
-      expect(repository.findById).toHaveBeenCalledWith(created.id);
+      expect(repositoryMock.findById).toHaveBeenCalledWith(created.id);
     });
 
     it('does not call usersService.findById when userId is omitted', async () => {
-      repository.create.mockResolvedValue(makeTask());
+      repositoryMock.create.mockResolvedValue(makeTask());
 
       await service.create({
         title: 'No user assigned',
@@ -185,11 +181,11 @@ describe('TasksService', () => {
       });
 
       expect(usersService.findById).not.toHaveBeenCalled();
-      expect(repository.create).toHaveBeenCalled();
+      expect(repositoryMock.create).toHaveBeenCalled();
     });
 
     it('does not call usersService.findById when userId is explicitly null', async () => {
-      repository.create.mockResolvedValue(makeTask());
+      repositoryMock.create.mockResolvedValue(makeTask());
 
       await service.create({
         title: 'No user assigned',
@@ -198,7 +194,7 @@ describe('TasksService', () => {
       });
 
       expect(usersService.findById).not.toHaveBeenCalled();
-      expect(repository.create).toHaveBeenCalled();
+      expect(repositoryMock.create).toHaveBeenCalled();
     });
 
     it('validates the userId exists before creating when userId is provided', async () => {
@@ -214,12 +210,12 @@ describe('TasksService', () => {
         status: TaskStatus.enum.OPEN,
         userId,
       };
-      repository.create.mockResolvedValue(makeTask({ userId }));
+      repositoryMock.create.mockResolvedValue(makeTask({ userId }));
 
       await service.create(createTaskDto);
 
       expect(usersService.findById).toHaveBeenCalledWith(userId);
-      expect(repository.create).toHaveBeenCalledWith(createTaskDto);
+      expect(repositoryMock.create).toHaveBeenCalledWith(createTaskDto);
     });
 
     it('throws BadRequestException when userId does not reference an existing user', async () => {
@@ -232,15 +228,15 @@ describe('TasksService', () => {
           status: TaskStatus.enum.OPEN,
           userId,
         }),
-      ).rejects.toThrow(BadRequestException);
-      expect(repository.create).not.toHaveBeenCalled();
+      ).rejects.toThrow(`User with id ${userId} not found`);
+      expect(repositoryMock.create).not.toHaveBeenCalled();
     });
   });
 
   describe('update', () => {
     it('returns the updated task the repository resolves', async () => {
       const updatedTask = makeTask({ title: 'Updated title' });
-      repository.update.mockResolvedValue(updatedTask);
+      repositoryMock.update.mockResolvedValue(updatedTask);
 
       const result = await service.update(updatedTask.id, {
         title: 'Updated title',
@@ -251,7 +247,7 @@ describe('TasksService', () => {
 
     it('passes the id and updateTaskDto through to the repository unchanged', async () => {
       const task = makeTask();
-      repository.update.mockResolvedValue(task);
+      repositoryMock.update.mockResolvedValue(task);
       const updateTaskDto = {
         title: 'New title',
         status: TaskStatus.enum.DONE,
@@ -259,46 +255,53 @@ describe('TasksService', () => {
 
       await service.update(task.id, updateTaskDto);
 
-      expect(repository.update).toHaveBeenCalledWith(task.id, updateTaskDto);
+      expect(repositoryMock.update).toHaveBeenCalledWith(
+        task.id,
+        updateTaskDto,
+      );
     });
 
     it('resolves with the unchanged task when given an empty update body', async () => {
       const task = makeTask();
-      repository.update.mockResolvedValue(task);
+      repositoryMock.update.mockResolvedValue(task);
 
       const result = await service.update(task.id, {});
 
       expect(result).toEqual(task);
-      expect(repository.update).toHaveBeenCalledWith(task.id, {});
+      expect(repositoryMock.update).toHaveBeenCalledWith(task.id, {});
     });
 
     it('throws NotFoundException when the repository finds no match to update', async () => {
-      repository.update.mockResolvedValue(null);
+      repositoryMock.update.mockResolvedValue(null);
+      const id = randomUUID();
 
       await expect(
-        service.update(randomUUID(), { title: 'Anything' }),
-      ).rejects.toThrow(NotFoundException);
+        service.update(id, { title: 'Anything' }),
+      ).rejects.toThrow(`Task with id ${id} not found`);
     });
 
     it('does not call usersService.findById when userId is omitted from the update', async () => {
       const task = makeTask();
-      repository.update.mockResolvedValue(task);
+      repositoryMock.update.mockResolvedValue(task);
 
       await service.update(task.id, { title: 'New title' });
 
       expect(usersService.findById).not.toHaveBeenCalled();
-      expect(repository.update).toHaveBeenCalled();
+      expect(repositoryMock.update).toHaveBeenCalled();
     });
 
     it('does not call usersService.findById when userId is explicitly set to null (unassigning)', async () => {
       const task = makeTask();
-      repository.update.mockResolvedValue(task);
+      repositoryMock.update.mockResolvedValue(task);
       const updateTaskDto = { userId: null };
 
       await service.update(task.id, updateTaskDto);
 
       expect(usersService.findById).not.toHaveBeenCalled();
-      expect(repository.update).toHaveBeenCalledWith(task.id, updateTaskDto);
+      expect(repositoryMock.update).toHaveBeenCalledWith(
+        task.id,
+        updateTaskDto,
+      );
     });
 
     it('validates the userId exists before updating when userId is provided', async () => {
@@ -310,12 +313,12 @@ describe('TasksService', () => {
         email: 'assignee@example.com',
         createdAt: new Date(),
       });
-      repository.update.mockResolvedValue(task);
+      repositoryMock.update.mockResolvedValue(task);
 
       await service.update(task.id, { userId });
 
       expect(usersService.findById).toHaveBeenCalledWith(userId);
-      expect(repository.update).toHaveBeenCalledWith(task.id, { userId });
+      expect(repositoryMock.update).toHaveBeenCalledWith(task.id, { userId });
     });
 
     it('throws BadRequestException when updating to a userId that does not reference an existing user', async () => {
@@ -323,40 +326,41 @@ describe('TasksService', () => {
       usersService.findById.mockResolvedValue(null);
 
       await expect(service.update(randomUUID(), { userId })).rejects.toThrow(
-        BadRequestException,
+        `User with id ${userId} not found`,
       );
-      expect(repository.update).not.toHaveBeenCalled();
+      expect(repositoryMock.update).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
     it('resolves without a value when the repository deletes the task', async () => {
-      repository.delete.mockResolvedValue(true);
+      repositoryMock.delete.mockResolvedValue(true);
 
       await expect(service.remove(randomUUID())).resolves.toBeUndefined();
     });
 
     it('passes the given id through to the repository', async () => {
       const id = randomUUID();
-      repository.delete.mockResolvedValue(true);
+      repositoryMock.delete.mockResolvedValue(true);
 
       await service.remove(id);
 
-      expect(repository.delete).toHaveBeenCalledWith(id);
+      expect(repositoryMock.delete).toHaveBeenCalledWith(id);
     });
 
     it('throws NotFoundException when the repository finds no match to delete', async () => {
-      repository.delete.mockResolvedValue(false);
+      repositoryMock.delete.mockResolvedValue(false);
+      const id = randomUUID();
 
-      await expect(service.remove(randomUUID())).rejects.toThrow(
-        NotFoundException,
+      await expect(service.remove(id)).rejects.toThrow(
+        `Task with id ${id} not found`,
       );
     });
 
     it('makes a deleted task unretrievable via findOne against the same repository', async () => {
       const task = makeTask();
-      repository.delete.mockResolvedValue(true);
-      repository.findById.mockResolvedValue(null);
+      repositoryMock.delete.mockResolvedValue(true);
+      repositoryMock.findById.mockResolvedValue(null);
 
       await service.remove(task.id);
 

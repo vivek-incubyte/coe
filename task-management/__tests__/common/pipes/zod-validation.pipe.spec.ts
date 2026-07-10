@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ZodValidationPipe } from './zod-validation.pipe';
+import { ZodValidationPipe } from '@src/common/pipes/zod-validation.pipe';
 
 describe('ZodValidationPipe', () => {
   it('returns the parsed value when it satisfies the schema', () => {

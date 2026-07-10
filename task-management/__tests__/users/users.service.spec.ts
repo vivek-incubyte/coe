@@ -2,9 +2,12 @@ import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
 import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CreateUserDto, PublicUser, User } from './user.schema';
-import { CreateUserInput, UsersRepository } from './users.repository';
-import { UsersService } from './users.service';
+import { CreateUserDto, PublicUser, User } from '@src/users/user.schema';
+import {
+  CreateUserInput,
+  UsersRepository,
+} from '@src/users/users.repository';
+import { UsersService } from '@src/users/users.service';
 
 const makeUser = (overrides: Partial<User> = {}): User => ({
   id: randomUUID(),
@@ -146,6 +149,43 @@ describe('UsersService', () => {
           password: 'DummyPassword',
         }),
       ).rejects.toBe(dbError);
+    });
+
+    it('propagates an error object with a non-matching code unchanged', async () => {
+      const dbError = { code: 'OTHER_CODE' };
+      repository.create.mockRejectedValue(dbError);
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBe(dbError);
+    });
+
+    it('propagates a null rejection unchanged', async () => {
+      repository.create.mockRejectedValue(null);
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBeNull();
+    });
+
+    it('propagates a non-object rejection unchanged', async () => {
+      repository.create.mockRejectedValue('boom');
+
+      await expect(
+        service.create({
+          name: 'Jane Doe',
+          email: 'jane.doe@example.com',
+          password: 'DummyPassword',
+        }),
+      ).rejects.toBe('boom');
     });
   });
 
