@@ -8,7 +8,12 @@ import {
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { PublicUser, UserResponseDto } from '../users/user.schema';
 import { AuthService } from './auth.service';
-import { LoginDto, LoginSchema, RegisterDto, RegisterSchema } from './auth.schema';
+import {
+  LoginDto,
+  LoginSchema,
+  RegisterDto,
+  RegisterSchema,
+} from './auth.schema';
 
 @ApiTags('auth')
 @Controller('auth')
