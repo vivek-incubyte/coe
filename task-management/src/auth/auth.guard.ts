@@ -33,7 +33,7 @@ export class AuthGuard implements CanActivate {
     let decodedToken: AuthToken;
     try {
       decodedToken = await this.jwtService.verifyAsync<AuthToken>(token[1]);
-    } catch (_err) {
+    } catch {
       return false;
     }
 

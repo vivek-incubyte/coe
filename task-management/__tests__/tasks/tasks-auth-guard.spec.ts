@@ -25,14 +25,7 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 let app: INestApplication<App>;
 
 beforeAll(async () => {
-  const url = process.env.TEST_DATABASE_URL;
-  if (!url) throw new Error('TEST_DATABASE_URL is not set in .env');
-
-  // Point the app's own DatabaseModule (ConfigService.getOrThrow('DATABASE_URL'))
-  // at the test database before the Nest module tree is compiled.
-  process.env.DATABASE_URL = url;
-
-  sql = postgres(url, { max: 1 });
+  sql = postgres(process.env.DATABASE_URL!, { max: 1 });
   db = drizzle(sql, { schema });
   await migrate(db, { migrationsFolder: 'src/infra/database/migrations' });
 
