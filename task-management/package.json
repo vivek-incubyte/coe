@@ -22,7 +22,8 @@
     "test:cov": "vitest run --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "ts-node --transpile-only src/infra/database/migrate.ts",
+    "db:migrate:prod": "node dist/src/infra/database/migrate.js",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push"
   },
@@ -33,6 +34,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/terminus": "^11.1.1",
     "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.2",
     "passport": "^0.7.0",
