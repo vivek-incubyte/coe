@@ -11,23 +11,34 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { ForbiddenToUnauthorizedFilter } from '../common/filters/forbidden-to-unauthorized.filter';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TasksService } from './tasks.service';
 import {
+  CreateTaskDto,
   CreateTaskSchema,
+  GetAllTasksQueryDto,
   GetAllTasksReq,
   TaskIdParamSchema,
-  UpdateTaskSchema,
-} from './task.schema';
-import type {
-  CreateTaskDto,
-  Task,
   TaskResponseDto,
   UpdateTaskDto,
+  UpdateTaskSchema,
 } from './task.schema';
+import type { Task } from './task.schema';
 
+@ApiTags('tasks')
+@ApiBearerAuth()
 @Controller('tasks')
 @UseGuards(AuthGuard)
 @UseFilters(ForbiddenToUnauthorizedFilter)
@@ -35,6 +46,8 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
+  @ApiQuery({ type: GetAllTasksQueryDto })
+  @ApiOkResponse({ type: TaskResponseDto, isArray: true })
   async findAll(
     @Query(new ZodValidationPipe(GetAllTasksReq))
     pagination: GetAllTasksReq,
@@ -44,6 +57,8 @@ export class TasksController {
   }
 
   @Get(':id')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: TaskResponseDto })
   async findOne(
     @Param('id', new ZodValidationPipe(TaskIdParamSchema)) id: string,
   ): Promise<TaskResponseDto> {
@@ -52,6 +67,8 @@ export class TasksController {
   }
 
   @Post()
+  @ApiBody({ type: CreateTaskDto })
+  @ApiCreatedResponse({ type: TaskResponseDto })
   async create(
     @Body(new ZodValidationPipe(CreateTaskSchema)) createTaskDto: CreateTaskDto,
   ): Promise<TaskResponseDto> {
@@ -60,6 +77,9 @@ export class TasksController {
   }
 
   @Patch(':id')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiBody({ type: UpdateTaskDto })
+  @ApiOkResponse({ type: TaskResponseDto })
   async update(
     @Param('id', new ZodValidationPipe(TaskIdParamSchema)) id: string,
     @Body(new ZodValidationPipe(UpdateTaskSchema)) updateTaskDto: UpdateTaskDto,
@@ -70,6 +90,8 @@ export class TasksController {
 
   @Delete(':id')
   @HttpCode(204)
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiNoContentResponse()
   async remove(
     @Param('id', new ZodValidationPipe(TaskIdParamSchema)) id: string,
   ): Promise<void> {
