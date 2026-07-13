@@ -15,10 +15,7 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 let repo: UsersRepository;
 
 beforeAll(async () => {
-  const url = process.env.TEST_DATABASE_URL;
-  if (!url) throw new Error('TEST_DATABASE_URL is not set in .env');
-
-  sql = postgres(url, { max: 1 });
+  sql = postgres(process.env.DATABASE_URL!, { max: 1 });
   db = drizzle(sql, { schema });
 
   await migrate(db, { migrationsFolder: 'src/infra/database/migrations' });
