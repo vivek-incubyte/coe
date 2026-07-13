@@ -5,8 +5,12 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
-  run_tests:
+  test:
     runs-on: ubuntu-latest
 
     env:
@@ -51,20 +55,116 @@ jobs:
       - name: Install Dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Check Format
-        run: pnpm format:check
-
-      - name: Check Lint
-        run: pnpm lint:check
-
-      - name: Check Typescript types
-        run: pnpm typecheck
-
       - name: Run migrations
         run: pnpm db:migrate
 
       - name: Run tests
         run: pnpm test
+
+  format:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: task-management
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: task-management/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Check Format
+        run: pnpm format:check
+
+  lint:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: task-management
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: task-management/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Check Lint
+        run: pnpm lint:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: task-management
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: task-management/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Check Typescript types
+        run: pnpm typecheck
+
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: task-management
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: task-management/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
 
       - name: Create Build
         run: pnpm build
