@@ -1,0 +1,11 @@
+#+title: Task Management
+
+* Testing Strategy
+- Repository - Integration tests with real database
+- Controller - Minimal unit tests if it contains behavior
+- Service - Unit tests to ensure correct business logic
+- Schema - Unit tests to ensure inputs and outputs holds up
+- API - API tests to ensure everything is connected properly and is functioning correctly
+- Mutation testing all tests to ensure most common bugs are caught
+
+Notes: We are essentially testing ORM in respository, so it can be skipped.

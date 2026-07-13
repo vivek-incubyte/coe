@@ -10,6 +10,11 @@
   - [[#pair-programming][Pair Programming]]
   - [[#incubytes-ai-plugins-repository][Incubyte's AI plugins repository]]
   - [[#converting-js-to-ts][Converting JS to TS]]
+- [[#day-9-learnings][Day 9 learnings]]
+  - [[#10-rules-of-continuous-integration][10 rules of Continuous Integration]]
+  - [[#continuous-delivery][Continuous Delivery]]
+  - [[#dora][DORA]]
+- [[#all-learnings][All Learnings]]
 
 * Day 1 Summary
 ** Working at Incubyte
@@ -100,3 +105,44 @@ After converting to .ts, wherever the compiler complains of not having types, si
 Instead of starting with any, start with the least no. of attributes required and define them. Avoid any until and unless the data type is not known genuinely.
 
 There will be places where null and undefined aren't handled. It refers to those types that might have empty fields. For such places, use ? to indicate a possibly null field which avoid runtime crashes later on.
+* Day 9 learnings
+** 10 rules of Continuous Integration
+- Continuous Integration is the pre-requisite for Continuous Delivery.
+- CI is about thinking about change differently.
+- CI is a publication/collaboration process where we see if our changes work with everyone else's as soon as possible. In fact, continuously.
+- Integration hell is when it is hard to bring all the changes together and collaborate them together into a working state.
+
+The rules:
+1. Always run commit tests locally before committing
+2. Wait for the results of commit tests
+3. Fix or revert failures as soon as possible
+4. If a team mate breaks the rules, revert their changes
+5. If someone else notices you caused a failure before you notice, it is a build sin!
+6. Once commit passes, move on to the next task
+7. If any test fails, it is the committer's responsibility
+8. If it's unclear who committed a failure, its the responsibility of everyone who could have introduced that failure to get together, to figure out who's responsible
+9. Monitor the progress of your change through the deployment pipeline
+10. Address any pipeline failure immediately
+** Continuous Delivery
+- Integration of code into the pipeline is the first step.
+- If all functional tests pass, the artifact for deployment can be built.
+- However, acceptance tests also need to be run on top of all the automated tests. They can be automated or manual.
+- Along with acceptance tests, there are perfomance tests to ensure scalability and performance. Then there are security tests to ensure application is secure enough.
+- Every time a change passes a pipeline, it is ready to be released as long as all tests have passed.
+- Continuous Delivery is measurably the most effective way of working.
+- By optimizing for fast feedback, we are encouraged to make changes in smaller steps.
+- DORA metrics helps us understand that there is no trade-off between speed and quality.
+- Automation is the key to CD. Automate everything. Version control everything.
+- Continuous deployment is different from continuous delivery
+** DORA
+DORA uses three factors to measure software delivery throughput:
+- Change Lead Time: Time difference between commit being merged to being deployed in production.
+- Deployment Frequency: The no. of deployments in a given time period.
+- Failed Deployment recovery time: The time it takes to recover from a deployment that failed which requires immediate intervention.
+
+DORA uses two factors to measure software delivery instability:
+- Change fail rate: The ratio of deployments that require immediate intervention following a deployment.
+- Deployment rework rate: The ratio of deployments that are unplanned but happen as a result of an incident in production.
+* All Learnings
+- Is it important to first decide the architecture of the system. Then, based on that architecture, we design a testing strategy. Before having a testing strategy, if we write code, we won't be able to make the proper use fo testing.
+- Start with the walking skeleton to ensure all wiring is correct. This is the API testing. Then, once we reach deeper levels, we do unit testing or integration testing based on that.
