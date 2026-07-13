@@ -1,51 +1,50 @@
-## Grill-Me / Clarification Decisions
-- Auth registration/login should live behind an Auth module/controller that takes UsersService as a dependency and uses it in the route (developer's own words) — build AuthController/AuthService in src/auth depending on UsersService, not bolt registration onto UsersController.
-- JWT expiry: 1 hour.
-- AuthGuard protects ALL task endpoints (GET/POST/PATCH/DELETE).
+## Context Summary
 
-## Context Gatherer Output
+Analysis method: text-based pattern matching (LSP not available in this environment)
 
 ### Project Structure
-Stack: TypeScript, NestJS 11, Drizzle ORM + Postgres, Zod v4. Feature-module folders: src/tasks, src/users, src/auth (guard only, no module yet), src/infra/database, src/common/pipes. Deps @nestjs/jwt, @nestjs/passport, passport, passport-jwt, bcrypt (+types) installed but unused in src/ yet. ConfigModule global via ConfigModule.forRoot({isGlobal:true}).
+- **Stack**: TypeScript, NestJS 11, Node, Drizzle ORM (postgres-js), Zod 4, pnpm workspace (`packageManager: pnpm@10.33.2`)
+- **Build**: `nest build` (Nest CLI); dev via `nest start --watch`; entry point `task-management/src/main.ts`
+- **Layout**: Single NestJS app at `task-management/`, feature modules under `src/`: `tasks/`, `users/`, `auth/`, plus `infra/database/` for persistence and `common/` for cross-cutting pipes/filters. Tests live in top-level `__tests__/` mirroring `src/`.
+- **Key dependencies**: `@nestjs/config`, `@nestjs/jwt`, `@nestjs/passport`, `drizzle-orm` + `postgres`, `zod`, `bcrypt`. `@nestjs/terminus` NOT present — needs adding.
 
 ### Architecture Pattern
-Simple layered: Controller -> Service -> Repository -> Drizzle, one dir per domain. TasksModule imports UsersModule. AuthGuard already depends on JwtService + UsersService via constructor DI (same style) but not registered in any module/app.module.ts yet. Dependency direction consistently inward, no violations.
+- MVC-style layering (NestJS convention): Controller -> Service -> Repository -> Drizzle connection.
+- Dependency direction: domain modules depend on `infra/database/database.module.ts` via `DATABASE_CONNECTION` DI token; infra never imports domain. `AppModule` composes all feature modules plus global `DatabaseModule`/`ConfigModule`.
 
 ### Test Infrastructure
-Vitest, co-located *.spec.ts. users.repository.spec.ts is real-DB integration spec (TEST_DATABASE_URL, migrate() in beforeAll, truncate in beforeEach, close in afterAll). vitest.config.ts sets fileParallelism:false because integration specs share one real Postgres DB. users.service.spec.ts / users.controller.spec.ts are pure-mock unit specs (vi.fn(), Test.createTestingModule, {provide:X,useValue:mock}). Any new integration spec must follow the serialized pattern.
+- Framework: Vitest (`vitest.config.ts`). Legacy Jest e2e config also exists but new work should follow Vitest pattern.
+- Location: top-level `task-management/__tests__/` mirroring `src/`. Import via `@src/...` alias.
+- Naming: `*.spec.ts` and some `*.test.ts`.
+- Run: `pnpm test` (`vitest run`).
+- Mocking: `Test.createTestingModule` with real/stub providers passed directly — no jest.fn/vi.fn mocking lib for controller-level unit tests.
+- Integration tests hit real Postgres via `DATABASE_URL`, migrated in `beforeAll`, truncated in `beforeEach`. `vitest.config.ts` sets `fileParallelism: false` for this reason.
 
-### Conventions
-- Status/enum-like literals derived from Zod schemas, never hand-rolled enum files (project already removed a task.enum.ts in favor of z.enum derived from schema).
-- DTO shape per resource: full *Schema (includes password), Create*Schema (z.strictObject, rejects extra fields), *ResponseSchema/*ResponseDto (public-safe, ISO date strings). New auth schemas (Login/Register) should follow this same three-schema shape.
-- PublicUser = Omit<User,'password'> already exists and is what Users layer returns everywhere except create() input — never let a password/hash leave the repository layer in a response.
-- ZodValidationPipe applied per-parameter (@Body(new ZodValidationPipe(Schema))), not globally — new auth endpoints use the same pipe.
-- Controllers stay thin, map to response DTO via private toResponseDto, no business logic in controllers.
-- Errors: domain-specific Nest exceptions thrown from service layer (ConflictException, NotFoundException), Postgres code 23505 checked for uniqueness violations, other errors rethrown unchanged.
-- Tests use ZOMBIES-style case coverage implicitly via describe/it naming — NEVER letter-comment headers (// Z:, // O: etc.) per user's standing rule.
+### Project Conventions
+- No CLAUDE.md in task-management/ or repo root.
+- ESLint 9 flat config, relaxed rules (`no-explicit-any: off`, etc).
+- Commit style: conventional-commit-like (`fix:`, `build:`, `build(docker):`).
+- Modules: strict 4-file-per-feature shape (`*.module.ts`, `*.controller.ts`, `*.service.ts`, `*.repository.ts`, `*.schema.ts`). DI via `@Inject(DATABASE_CONNECTION)`. Controllers thin; guards applied per-controller (`@UseGuards(AuthGuard)` only on `TasksController`; `AppController`/`UsersController` unguarded).
 
-### Change Area — Current State
-- src/auth/auth.guard.ts + auth.guard.spec.ts: fully implemented GOoS-mock-style guard (mocks JwtService + UsersService), checks Bearer header, jwtService.verifyAsync<AuthToken>, then userService.findById(sub), attaches request.user, returns boolean. 7 existing tests MUST keep passing unchanged — do not change constructor signature or behavior contract, only wire it into a module.
-- src/users/user.schema.ts: UserSchema has password: z.string() (no hash format validation at schema level — hashing happens in service, not schema). CreateUserSchema already enforces min(5).max(100) on password.
-- src/users/users.service.ts create(): passes createUserDto straight to repository — PASSWORD STORED PLAINTEXT TODAY. This is the exact spot needing bcrypt hashing before persistence (or a new AuthService.register() step before delegating to UsersService — TBD in spec, developer wants Auth layer to depend on UsersService for this).
-- src/users/users.repository.ts create(): accepts plain {name,email,password}, inserts as-is — repository is hash-agnostic, no change needed regardless of where hashing happens.
-- src/users/users.controller.ts: POST /users (create, unauthenticated) and GET /users (list, unauthenticated) exist today — no login endpoint. Whether POST /users stays, is guarded, or moves to /auth/register needs settling in spec.
-- src/tasks/tasks.controller.ts: all 5 routes (GET, GET:id, POST, PATCH:id, DELETE:id) have zero auth guards today. TasksModule already imports UsersModule; will also need to import AuthModule (or JwtModule) so AuthGuard can resolve JwtService in that module's DI scope.
-- No AuthModule, no JwtModule.register/forRootAsync call anywhere. No JWT_SECRET in .env/.env.example yet — add via JwtModule.registerAsync reading ConfigService, following DatabaseModule's ConfigService.getOrThrow<string>('DATABASE_URL') fail-fast pattern (use getOrThrow for JWT secret too, not a silent default).
-
-### Best-guess files to add/modify (confirm in spec)
-- .env / .env.example: add JWT_SECRET
-- New: src/auth/auth.module.ts, src/auth/auth.service.ts (+spec), src/auth/auth.controller.ts (+spec), src/auth/auth.schema.ts (Login/Register Zod schemas, 3-schema pattern)
-- src/users/users.service.ts: add bcrypt hashing in create() (or coordinate with new AuthService.register(), per spec decision)
-- src/app.module.ts: register AuthModule
-- src/tasks/tasks.module.ts: import AuthModule (or JwtModule) for AuthGuard DI
-- src/tasks/tasks.controller.ts: add @UseGuards(AuthGuard) class-level, protecting all 5 routes
-- src/users/users.controller.ts: resolve whether POST /users stays/guarded/moves
+### Change Area
+- No existing health-check code anywhere in task-management/.
+- `AppController` is the only unguarded top-level controller today (`GET /` -> "Hello World!" via `AppService`).
+- Files to add/modify:
+  - `task-management/package.json` — add `@nestjs/terminus`
+  - `task-management/src/app.module.ts` — register new health module
+  - New module `task-management/src/health/health.module.ts` + `health.controller.ts` (no service/repository needed — thin Terminus wrapper, per YAGNI)
+  - New test(s) under `task-management/__tests__/health/`, `.spec.ts` naming
+- DB connectivity check must reuse the existing `DATABASE_CONNECTION` token / `Database` type from `infra/database/database.module.ts` (which is `@Global()` — injectable anywhere without re-import). No Terminus Drizzle indicator exists — write custom indicator wrapping a lightweight query (e.g. `SELECT 1`).
+- Endpoint should be unguarded/public (matches liveness/readiness probe convention, and matches `AppController`/`UsersController` unguarded pattern).
+- No throttler, no logging/audit infra elsewhere — none expected here.
 
 ### Existing Documentation
-docs/specs/tasks-crud-api-spec.md's Out of Scope explicitly states "Authentication/authorization (single-tenant, unauthenticated API)" — this new auth spec is the first to introduce it; call out in new spec that all existing endpoints being newly protected is a deliberate scope expansion.
+- Specs: `task-management/docs/specs/tasks-crud-api-spec.md`, `user-authentication-spec.md`, `users-and-task-assignee-mapping-spec.md`. No spec yet for health checks.
+- No ADRs directory.
+- `task-management/docs/architecture-assessment.md` confirms layering, notes `DATABASE_CONNECTION`/`Database` as stable DB-connection concern.
 
 ### Tidy Opportunities
-Plaintext password storage is a live security gap fixed AS PART OF this feature, not a separate tidy commit. No dead code, no skipped/broken tests, no functions over 50 lines in auth/users/tasks area — otherwise clean, no separate tidy pass needed.
+None — area is clean/greenfield.
 
 ### Design System
 UI-involved: no. Backend-only NestJS API.
