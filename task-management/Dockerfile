@@ -25,6 +25,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /task-management/dist ./dist
+COPY --from=builder /task-management/src/infra/database/migrations ./src/infra/database/migrations
 
 RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
 USER nestjs
