@@ -168,3 +168,25 @@ jobs:
 
       - name: Create Build
         run: pnpm build
+
+  docker:
+    needs: [test, format, lint, typecheck, build]
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: task-management
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: task-management
+          push: false
+          tags: task-management:${{ github.sha }}
