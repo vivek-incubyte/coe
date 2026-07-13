@@ -9,6 +9,10 @@ jobs:
   run_tests:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5555/task_management_test
+      JWT_SECRET: test-secret
+
     services:
       postgres:
         image: postgres:17
@@ -47,14 +51,20 @@ jobs:
       - name: Install Dependencies
         run: pnpm i --frozen-lockfile
 
+      - name: Check Format
+        run: pnpm format:check
+
+      - name: Check Lint
+        run: pnpm lint:check
+
+      - name: Check Typescript types
+        run: pnpm typecheck
+
       - name: Run migrations
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5555/task_management_test
-          JWT_SECRET: test-secret
         run: pnpm db:migrate
 
       - name: Run tests
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5555/task_management_test
-          JWT_SECRET: test-secret
         run: pnpm test
+
+      - name: Create Build
+        run: pnpm build
