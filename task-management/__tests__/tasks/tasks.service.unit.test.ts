@@ -275,9 +275,9 @@ describe('TasksService', () => {
       repositoryMock.update.mockResolvedValue(null);
       const id = randomUUID();
 
-      await expect(
-        service.update(id, { title: 'Anything' }),
-      ).rejects.toThrow(`Task with id ${id} not found`);
+      await expect(service.update(id, { title: 'Anything' })).rejects.toThrow(
+        `Task with id ${id} not found`,
+      );
     });
 
     it('does not call usersService.findById when userId is omitted from the update', async () => {
