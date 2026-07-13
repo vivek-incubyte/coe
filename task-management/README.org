@@ -9,3 +9,11 @@
 - Mutation testing all tests to ensure most common bugs are caught
 
 Notes: We are essentially testing ORM in respository, so it can be skipped.
+* Deployment Runbook
+  1. Confirm PR merged to main
+  2. Review new migration SQL files in src/infra/database/migrations/ if any — diff against last deploy.
+  3. CI green (pr_test.yaml: test/format/lint/typecheck/build all pass)
+  4. Railway auto deploys the newly created docker image
+  5. Backup prod DB
+  6. Run migrations manually if required using (pnpm db:migrate:prod)
+  7. Verify health of the app - curl https://vivek-incubyte-coe.up.railway.app/health
